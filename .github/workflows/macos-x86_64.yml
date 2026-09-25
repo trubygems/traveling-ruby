@@ -16,7 +16,7 @@ on:
         type: boolean
 
 env:
-  PKG_DATE: 20260608
+  PKG_DATE: 20260922
   PLATFORM: macos
   ARCHITECTURES: x86_64
   DEVELOPER_DIR: /Applications/Xcode_16.0.app/Contents/Developer

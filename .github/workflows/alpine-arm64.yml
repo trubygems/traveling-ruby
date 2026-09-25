@@ -10,7 +10,7 @@ on:
     types: [published]
 
 env:
-  PKG_DATE: 20260608
+  PKG_DATE: 20260922
 
 jobs:
   setup-ruby-versions:
