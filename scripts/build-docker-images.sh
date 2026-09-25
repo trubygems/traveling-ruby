@@ -73,7 +73,7 @@ usage() {
   echo "Building Docker image for Traveling Ruby version ${TRAVELING_RUBY_VERSION}..."
 
   # Define the latest major and minor versions
-  LATEST_MAJOR_MINOR=("2.7.8" "3.2.9")
+  LATEST_MAJOR_MINOR=("2.7.8" "3.2.11")
   # Set the values for the arguments
   TRAVELING_RUBY_VERSION=${TRAVELING_RUBY_VERSION:-$DEFAULT_TRAVELING_RUBY_VERSION}
   TRAVELING_RUBY_PKG_DATE=${TRAVELING_RUBY_PKG_DATE:-$DEFAULT_TRAVELING_RUBY_PKG_DATE}

@@ -19,7 +19,7 @@ jobs:
       - name: "Set up Ruby"
         uses: ruby/setup-ruby@master
         with:
-            ruby-version: 3.3.10
+            ruby-version: 3.3.11
       - name: build image
         run: |
           cd linux

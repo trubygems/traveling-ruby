@@ -9,7 +9,7 @@ on:
     types: [published]
 
 env:
-  PKG_DATE: 20251122
+  PKG_DATE: 20260922
 
 jobs:
   build-windows:
@@ -21,12 +21,12 @@ jobs:
     strategy:
       matrix:
         arch: [x86_64]
-        ruby-version: [3.2.9, 3.3.10, 3.4.7]
+        ruby-version: [4.0.7]
         os: [windows-latest]
         # include:
         #   - os: windows-11-arm
         #     arch: arm64
-        #     ruby-version: 3.4.7
+        #     ruby-version: 3.4.9
       fail-fast: false
     steps:
       # - uses: msys2/setup-msys2@v2
@@ -164,12 +164,12 @@ jobs:
     strategy:
       matrix:
         arch: [x86_64]
-        ruby-version: [3.2.9, 3.3.10, 3.4.7]
+        ruby-version: [4.0.7]
         os: [windows-latest]
         # include:
         #   - os: windows-11-arm
         #     arch: arm64
-        #     ruby-version: 3.4.7
+        #     ruby-version: 3.4.9
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -194,12 +194,12 @@ jobs:
     strategy:
       matrix:
         arch: [x86_64]
-        ruby-version: [3.4.7]
+        ruby-version: [3.4.10]
         os: [windows-latest]
         # include:
         #   - os: windows-11-arm
         #     arch: arm64
-        #     ruby-version: 3.4.7
+        #     ruby-version: 3.4.9
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:

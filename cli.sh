@@ -25,12 +25,12 @@ set -e
 
 PROJECT_NAME='traveling-ruby'
 TRAVELING_RUBY_GH_SOURCE=YOU54F/${PROJECT_NAME}
-TRAVELING_RUBY_VERSION=${TRAVELING_RUBY_VERSION:-3.2.9}
+TRAVELING_RUBY_VERSION=${TRAVELING_RUBY_VERSION:-3.2.11}
 
 usage() {
   echo "Usage: $0 [-v <version>] [-d <release-date>] [--set-path] [--clean-install] [--ci]"
   echo ""
-  echo "  -v <version>          Ruby version to install (default: 3.2.9)"
+  echo "  -v <version>          Ruby version to install (default: 3.2.11)"
   echo "  -d <release-date>     Release date of the traveling ruby package to download (default: latest)"
   echo "  --set-path            Add the traveling ruby bin path to the PATH environment variable (default: false)"
   echo "  --clean-install       Remove any existing traveling ruby installation before installing (default: false)"
@@ -71,7 +71,7 @@ while getopts "hg:v:d:-:" opt; do
 done
 
 if [ -z "$TRAVELING_RUBY_VERSION" ]; then
-  TRAVELING_RUBY_VERSION=3.2.9
+  TRAVELING_RUBY_VERSION=3.2.11
 fi
 
 if [ -z "$TRAVELING_RUBY_PKG_DATE" ]; then

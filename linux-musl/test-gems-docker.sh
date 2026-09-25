@@ -6,7 +6,7 @@ SELFDIR=`cd "$SELFDIR" && pwd`
 
 if [ -z "$1" ]; then
     echo "Usage: $0 output/<ruby-version>-<arch> <image>"
-    echo "example: $0 3.2.9-arm64"
+    echo "example: $0 3.2.11-arm64"
     echo "image: alpine:latest"
     echo "image is optional|default: alpine:latest"
     exit 1

@@ -4,7 +4,7 @@ inputs:
   ruby-version:
     description: 'Version of Traveling Ruby to install'
     required: false
-    default: '3.2.9'
+    default: '3.2.11'
   release:
     description: 'Date of the package to install'
     required: false

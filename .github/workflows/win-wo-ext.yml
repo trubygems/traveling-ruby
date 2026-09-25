@@ -1,15 +1,15 @@
 name: Windows-via-unix
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  release:
-    types: [published]
+  # push:
+  #   branches: [ main ]
+  # pull_request:
+  #   branches: [ main ]
+  # release:
+  #   types: [published]
 
 env:
-  PKG_DATE: 20251122
+  PKG_DATE: 20260922
 
 jobs:
   build-windows:
@@ -17,10 +17,10 @@ jobs:
     strategy:
       matrix:
         arch: [x86_64, x86]
-        ruby-version: [3.2.9, 3.3.10, 3.4.7]
+        ruby-version: [4.0.7]
         include:
           - arch: arm64
-            ruby-version: 3.4.7
+            ruby-version: 4.0.7
       fail-fast: false
     steps:
       - uses: actions/checkout@v5
@@ -61,12 +61,12 @@ jobs:
     strategy:
       matrix:
         arch: [x86_64]
-        ruby-version: [3.2.9, 3.3.10, 3.4.7]
+        ruby-version: [4.0.7]
         os: [windows-latest]
         include:
           - os: windows-11-arm
             arch: arm64
-            ruby-version: 3.4.7
+            ruby-version: 4.0.7
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
