@@ -17,10 +17,10 @@ jobs:
     strategy:
       matrix:
         arch: [x86_64, x86]
-        ruby-version: [4.0.6]
+        ruby-version: [4.0.7]
         include:
           - arch: arm64
-            ruby-version: 4.0.6
+            ruby-version: 4.0.7
       fail-fast: false
     steps:
       - uses: actions/checkout@v5
@@ -61,12 +61,12 @@ jobs:
     strategy:
       matrix:
         arch: [x86_64]
-        ruby-version: [4.0.6]
+        ruby-version: [4.0.7]
         os: [windows-latest]
         include:
           - os: windows-11-arm
             arch: arm64
-            ruby-version: 4.0.6
+            ruby-version: 4.0.7
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
