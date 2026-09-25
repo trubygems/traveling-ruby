@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         arch: [x86_64]
-        ruby-version: [3.3.12, 3.4.10, 4.0.6]
+        ruby-version: [4.0.6]
         os: [windows-latest]
         # include:
         #   - os: windows-11-arm
@@ -164,7 +164,7 @@ jobs:
     strategy:
       matrix:
         arch: [x86_64]
-        ruby-version: [3.3.12, 3.4.10, 4.0.6]
+        ruby-version: [4.0.6]
         os: [windows-latest]
         # include:
         #   - os: windows-11-arm
