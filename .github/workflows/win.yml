@@ -95,9 +95,14 @@ jobs:
           dlltool --version
 
       - name: build ruby ${{ matrix.ruby-version }} ${{ matrix.arch }}
-        shell: msys2 {0}
         working-directory: windows
         run: |
+            # Enable MSYS2 environment (sets up PATH with dlltool from binutils)
+            # This runs in bash but ridk enable properly configures the MSYS2 PATH
+            ./output/${{ matrix.ruby-version }}/${{ matrix.arch }}/bin/ridk.cmd enable
+            # Verify dlltool is available
+            which dlltool
+            dlltool --version
             uname -m
             mkdir -p cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
             ./build-ruby.sh -a ${{ matrix.arch }} -r ${{ matrix.ruby-version }} cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
