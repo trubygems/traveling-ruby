@@ -85,57 +85,15 @@ jobs:
           ruby-version: ${{ matrix.ruby-version }}
           # bundler-cache: true
 
-      - name: Install binutils (dlltool) for native gem compilation
-        shell: bash
-        run: |
-          echo "RI_DEVKIT=$RI_DEVKIT"
-          which dlltool || echo "dlltool not found in PATH before install"
-          # Install mingw-w64-ucrt-x86_64-binutils which provides dlltool
-          "$RI_DEVKIT/usr/bin/pacman.exe" -S --noconfirm mingw-w64-ucrt-x86_64-binutils 2>&1 | tail -5
-          which dlltool || echo "dlltool still not found after install"
-          # Add the directory containing dlltool to PATH
-          DLLTOOL_DIR=$(dirname "$(which dlltool)")
-          echo "$DLLTOOL_DIR" >> $GITHUB_PATH
-          echo "Added $DLLTOOL_DIR to PATH"
-      # - name: build ruby ${{ matrix.ruby-version }} ${{ matrix.arch }}
-      #   # shell: msys2 {0}
-      #   if: matrix.arch == 'arm64'
-      #   working-directory: windows
-      #   run: |
-      #       set MSYSTEM=CLANGARM64
-      #       ridk install 2 3
-      #       ridk enable
-      #       uname -m
-      #       ridk exec sh -c "mkdir -p cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}"
-      #       ridk exec sh -c "./build-ruby.sh -a ${{ matrix.arch }} -r ${{ matrix.ruby-version }} cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}"
-      #   env:
-      #     RUBY_VERSIONS: ${{ matrix.ruby-version }}
-      #     ARCHITECTURES: ${{ matrix.arch }}
-      # - name: Setup MSYS2 (CLANGARM64)
-      #   uses: msys2/setup-msys2@v2
-      #   with:
-      #     msystem: CLANGARM64
-      #     update: true
-      #     release: true
-      #     install: >
-      #       autotools
-      #       mingw-w64-clang-aarch64-clang
-      #       ruby
-      # - name: Setup RubyInstaller MSYS2 toolchain (arm64)
-      #   if: matrix.arch == 'arm64'
-      #   working-directory: windows
-      #   run: |
-      #     # Enable MSYS2 environment
-      #     mkdir -p cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
-      #     EXTRACT_ONLY=1 ./build-ruby.sh -a ${{ matrix.arch }} -r ${{ matrix.ruby-version }} cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
-      #     ./output/${{ matrix.ruby-version }}/${{ matrix.arch }}/bin/ridk.cmd enable
-      #     # Update MSYS2 and install required build tools
-      #     ./output/${{ matrix.ruby-version }}/${{ matrix.arch }}/bin/ridk.cmd exec sh -c "pacman -Syu --noconfirm"
-      #     ./output/${{ matrix.ruby-version }}/${{ matrix.arch }}/bin/ridk.cmd exec sh -c "pacman -S --noconfirm make gcc mingw-w64-clang-aarch64-clang"
-
       - name: build ruby ${{ matrix.ruby-version }} ${{ matrix.arch }}
         working-directory: windows
         run: |
+            # Add dlltool directory to PATH for native gem compilation.
+            # Native gems (bcrypt, ffi, io-console, bindex, stringio, etc.) need dlltool
+            # for .def file generation during native extension compilation on Windows.
+            DLLTOOL_DIR="$(dirname "$(which dlltool)")"
+            export PATH="$DLLTOOL_DIR:$PATH"
+            echo "dlltool path: $(which dlltool)"
             uname -m
             mkdir -p cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
             ./build-ruby.sh -a ${{ matrix.arch }} -r ${{ matrix.ruby-version }} cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
