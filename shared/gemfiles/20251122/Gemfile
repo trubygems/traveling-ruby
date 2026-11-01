@@ -1,12 +1,12 @@
 source 'https://rubygems.org'
 
-gem 'bcrypt', force_ruby_platform: true unless Gem.win_platform?
+gem 'bcrypt'
 gem 'bigdecimal', force_ruby_platform: true
-gem 'escape_utils', force_ruby_platform: true unless Gem.win_platform?
+gem 'escape_utils'
 gem 'eventmachine', force_ruby_platform: true
-gem 'fast-stemmer', force_ruby_platform: true unless Gem.win_platform?
-gem 'ffi', force_ruby_platform: true unless Gem.win_platform?
-gem 'fiddle', force_ruby_platform: true unless Gem.win_platform?
+gem 'fast-stemmer'
+gem 'ffi', force_ruby_platform: true
+gem 'fiddle', force_ruby_platform: true
 gem 'hitimes'
 gem 'json'
 gem 'mini_portile2'
@@ -15,12 +15,11 @@ gem 'pact_broker-client'
 gem 'pg', force_ruby_platform: true
 gem 'psych', force_ruby_platform: true
 gem 'puma', force_ruby_platform: true
-gem 'RedCloth', force_ruby_platform: true unless Gem.win_platform?
-gem 'redcarpet', force_ruby_platform: true unless Gem.win_platform?
+gem 'RedCloth'
+gem 'redcarpet'
 gem 'rexml'
 gem 'rinda'
 gem 'stringio', force_ruby_platform: true
-gem 'io-console', force_ruby_platform: true
 gem 'test-unit'
 gem 'thruster', force_ruby_platform: true, require: false
 gem 'thin', force_ruby_platform: true
@@ -37,7 +36,7 @@ gem 'nokogiri', force_ruby_platform: true
 
 # # wont build on windows arm
 
-# gem 'curses', force_ruby_platform: true  # removed from Windows: Ruby ships curses built-in
+gem 'curses', force_ruby_platform: true
 gem 'rugged', force_ruby_platform: true
 
 
@@ -80,10 +79,10 @@ gem "solid_queue"
 gem "solid_cable"
 
 # Reduces boot times through caching; required in config/boot.rb
-gem "bootsnap", require: false, force_ruby_platform: true unless Gem.win_platform?
+gem "bootsnap", require: false
 
 # Deploy this application anywhere as a Docker container [https://kamal-deploy.org]
-gem "kamal", require: false, force_ruby_platform: true unless Gem.win_platform?
+gem "kamal", require: false
 
 # Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
 # gem "thruster", require: false
@@ -93,7 +92,7 @@ gem "image_processing", "~> 1.2"
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
-  gem "debug", platforms: %i[ mri windows ], require: "debug/prelude" unless Gem.win_platform?
+  gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
 
   # Audits gems for known security defects (use config/bundler-audit.yml to ignore issues)
   gem "bundler-audit", require: false
@@ -102,12 +101,12 @@ group :development, :test do
   gem "brakeman", require: false
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
-  gem "rubocop-rails-omakase", require: false, force_ruby_platform: true unless Gem.win_platform?
+  gem "rubocop-rails-omakase", require: false
 end
 
 group :development do
   # Use console on exceptions pages [https://github.com/rails/web-console]
-  gem "web-console", force_ruby_platform: true unless Gem.win_platform?
+  gem "web-console"
 end
 
 group :test do
