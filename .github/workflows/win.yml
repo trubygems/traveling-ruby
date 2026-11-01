@@ -91,9 +91,10 @@ jobs:
             # Add dlltool directory to PATH for native gem compilation.
             # Native gems (bcrypt, ffi, io-console, bindex, stringio, etc.) need dlltool
             # for .def file generation during native extension compilation on Windows.
-            DLLTOOL_DIR="$(dirname "$(which dlltool)")"
+            DLLTOOL_DIR="$(cygpath -w "$(dirname "$(which dlltool)")")"
             export PATH="$DLLTOOL_DIR:$PATH"
             echo "dlltool path: $(which dlltool)"
+            echo "PATH includes: $DLLTOOL_DIR"
             uname -m
             mkdir -p cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
             ./build-ruby.sh -a ${{ matrix.arch }} -r ${{ matrix.ruby-version }} cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
