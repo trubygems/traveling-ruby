@@ -2,9 +2,9 @@ source 'https://rubygems.org'
 
 gem 'bcrypt'
 gem 'bigdecimal', force_ruby_platform: true
-gem 'escape_utils'
+gem 'escape_utils', force_ruby_platform: true unless Gem.win_platform?
 gem 'eventmachine', force_ruby_platform: true
-gem 'fast-stemmer'
+gem 'fast-stemmer', force_ruby_platform: true unless Gem.win_platform?
 gem 'ffi', force_ruby_platform: true
 gem 'fiddle', force_ruby_platform: true
 gem 'hitimes'
