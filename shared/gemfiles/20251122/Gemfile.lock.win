@@ -79,11 +79,8 @@ GEM
       public_suffix (>= 2.0.2, < 7.0)
     ast (2.4.3)
     base64 (0.3.0)
-    bcrypt (3.1.20)
     bigdecimal (3.3.1)
     bindex (0.8.1)
-    bootsnap (1.19.0)
-      msgpack (~> 1.2)
     brakeman (7.1.1)
       racc
     builder (3.3.0)
@@ -116,7 +113,6 @@ GEM
     et-orbi (1.4.0)
       tzinfo
     eventmachine (1.2.7)
-    ffi (1.17.2)
     fiddle (1.1.8)
     forwardable (1.3.3)
     fugit (1.12.1)
@@ -398,15 +394,12 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
-  bcrypt
   bigdecimal
-  bootsnap
   brakeman
   bundler-audit
   capybara
   debug
   eventmachine
-  ffi
   fiddle
   hitimes
   image_processing (~> 1.2)
