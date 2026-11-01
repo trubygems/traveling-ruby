@@ -55,6 +55,28 @@ jobs:
           # pacboy: icu:p 7zip:p gcc:p pkg-config:p sqlite3:p libxml2:p libxslt:p libiconv:p libmariadbclient:p libpqxx:p xz:p gcc-libs:p
           # pacboy: icu:p 7zip:p ccache:p cmake:p libtool:p openssl:p ncurses:p gmp:p libffi:p libyaml:p sqlite:p xz:p libmariadbclient:p libpqxx:p libssh2:p libxml2:p libxslt:p clang:p cc:p autotools:p doxygen:p graphviz:p gcc-libs:p gdbm:p libyaml:p libffi:p pdcurses:p openssl:p gmp:p tk:p
           
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          path-type: inherit
+          update: true
+          release: true
+          install: >
+            binutils
+            make
+            gcc
+            pkg-config
+            icu
+            7zip
+            sqlite3
+            libxml2
+            libxslt
+            libiconv
+            libmariadbclient
+            libpqxx
+            xz
+            gcc-libs
+
       - uses: actions/checkout@v5
       - name: Cache vendor gems
         id: cache-vendor
@@ -79,39 +101,20 @@ jobs:
         with:
           # working-directory: shared/gemfiles/${{ env.PKG_DATE }}
           # msys2: icu-devel
-          mingw:             icu 7zip gcc make pkg-config binutils sqlite3 libxml2 libxslt libiconv libmariadbclient libpqxx xz gcc-libs gcc
+          # mingw packages now installed via msys2/setup-msys2@v2
           ruby-version: ${{ matrix.ruby-version }}
           # bundler-cache: true
 
-      - name: Add dlltool to PATH for native gem compilation
-        shell: bash
-        run: |
-          # ruby/setup-ruby-pkgs@v1 installs binutils (provides dlltool) via pacman.
-          # We need to add the dlltool directory to PATH so make can find it for .def file generation.
-          DLLTOOL_DIR="$(dirname "$(which dlltool)")"
-          echo "$DLLTOOL_DIR" >> $GITHUB_PATH
-          echo "Added $DLLTOOL_DIR to GITHUB_PATH"
-          echo "dlltool: $(which dlltool)"
-          dlltool --version
-
       - name: build ruby ${{ matrix.ruby-version }} ${{ matrix.arch }}
+        shell: msys2 {0}
         working-directory: windows
         env:
           RUBY_VERSIONS: ${{ matrix.ruby-version }}
           ARCHITECTURES: ${{ matrix.arch }}
-          MSYS2_PATH_TYPE: inherit
         run: |
-            # Add MSYS2 ucrt64 bin to PATH for native gem compilation.
-            # ruby/setup-ruby-pkgs@v1 installs Ruby and MSYS2 at /c/hostedtoolcache/windows/Ruby/<version>/x64/msys64/ucrt64/
-            MSYS2_BIN="/c/hostedtoolcache/windows/Ruby/${{ matrix.ruby-version }}/x64/msys64/ucrt64/bin"
-            export PATH="$MSYS2_BIN:$PATH"
-            echo "MSYS2_BIN: $MSYS2_BIN"
-            which dlltool
-            dlltool --version
             uname -m
             mkdir -p cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
-            # Run build-ruby.sh with bash login shell to ensure MSYS2 PATH is inherited
-            bash -l ./build-ruby.sh -a ${{ matrix.arch }} -r ${{ matrix.ruby-version }} cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
+            ./build-ruby.sh -a ${{ matrix.arch }} -r ${{ matrix.ruby-version }} cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
       - name: package ${{ matrix.arch }}
         # shell: bash
         working-directory: windows
