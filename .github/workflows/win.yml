@@ -8,11 +8,23 @@ on:
   release:
     types: [published]
 
+# Commit message keyword filtering:
+# - "(windows)" → run Windows CI
+# - "(macos)", "(macos-arm64)", "(macos-x86_64)", "(linux)", "(linux-musl)" → skip Windows
+# - No keyword → run all (backward compatible)
+
 env:
   PKG_DATE: 20251122
 
 jobs:
   build-windows:
+    if: |
+      !contains(github.event.head_commit.message || '', '(macos)') &&
+      !contains(github.event.head_commit.message || '', '(macos-arm64)') &&
+      !contains(github.event.head_commit.message || '', '(macos-x86_64)') &&
+      !contains(github.event.head_commit.message || '', '(linux)') &&
+      !contains(github.event.head_commit.message || '', '(linux-musl)') &&
+      (contains(github.event.head_commit.message || '', '(windows)') || !contains(github.event.head_commit.message || '', '('))
     defaults:
         run:
           shell: bash
@@ -160,6 +172,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   test-windows-min:
+    if: |
+      !contains(github.event.head_commit.message || '', '(macos)') &&
+      !contains(github.event.head_commit.message || '', '(macos-arm64)') &&
+      !contains(github.event.head_commit.message || '', '(macos-x86_64)') &&
+      !contains(github.event.head_commit.message || '', '(linux)') &&
+      !contains(github.event.head_commit.message || '', '(linux-musl)') &&
+      (contains(github.event.head_commit.message || '', '(windows)') || !contains(github.event.head_commit.message || '', '('))
     needs: build-windows
     strategy:
       matrix:
@@ -190,6 +209,13 @@ jobs:
           RUBY_VERSIONS: ${{ matrix.ruby-version }}
           ARCHITECTURES: ${{ matrix.arch }}
   test-windows-full:
+    if: |
+      !contains(github.event.head_commit.message || '', '(macos)') &&
+      !contains(github.event.head_commit.message || '', '(macos-arm64)') &&
+      !contains(github.event.head_commit.message || '', '(macos-x86_64)') &&
+      !contains(github.event.head_commit.message || '', '(linux)') &&
+      !contains(github.event.head_commit.message || '', '(linux-musl)') &&
+      (contains(github.event.head_commit.message || '', '(windows)') || !contains(github.event.head_commit.message || '', '('))
     needs: build-windows
     strategy:
       matrix:
