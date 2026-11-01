@@ -67,7 +67,7 @@ jobs:
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-pkg-config
             mingw-w64-ucrt-x86_64-icu
-            mingw-w64-ucrt-x86_64-p7zip
+            mingw-w64-ucrt-x86_64-7zip
             mingw-w64-ucrt-x86_64-sqlite3
             mingw-w64-ucrt-x86_64-libxml2
             mingw-w64-ucrt-x86_64-libxslt
