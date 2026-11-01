@@ -85,14 +85,11 @@ jobs:
           ruby-version: ${{ matrix.ruby-version }}
           # bundler-cache: true
 
-      - uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          update: true
-          install: >
-            make
-            binutils
-            base-devel
+      - name: Add RubyInstaller MSYS2 to PATH
+        shell: bash
+        run: |
+          echo "$RI_DEVKIT/ucrt64/bin" >> $GITHUB_PATH
+          echo "$RI_DEVKIT/usr/bin" >> $GITHUB_PATH
       # - name: build ruby ${{ matrix.ruby-version }} ${{ matrix.arch }}
       #   # shell: msys2 {0}
       #   if: matrix.arch == 'arm64'
