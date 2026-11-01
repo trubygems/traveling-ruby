@@ -15,7 +15,7 @@ gem 'pact_broker-client'
 gem 'pg', force_ruby_platform: true
 gem 'psych', force_ruby_platform: true
 gem 'puma', force_ruby_platform: true
-gem 'RedCloth'
+# gem 'RedCloth'
 gem 'redcarpet'
 gem 'rexml'
 gem 'rinda'
