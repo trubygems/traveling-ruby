@@ -96,6 +96,10 @@ jobs:
 
       - name: build ruby ${{ matrix.ruby-version }} ${{ matrix.arch }}
         working-directory: windows
+        env:
+          RUBY_VERSIONS: ${{ matrix.ruby-version }}
+          ARCHITECTURES: ${{ matrix.arch }}
+          MSYS2_PATH_TYPE: inherit
         run: |
             # Add MSYS2 ucrt64 bin to PATH for native gem compilation.
             # ruby/setup-ruby-pkgs@v1 installs Ruby and MSYS2 at /c/hostedtoolcache/windows/Ruby/<version>/x64/msys64/ucrt64/
@@ -106,10 +110,8 @@ jobs:
             dlltool --version
             uname -m
             mkdir -p cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
-            ./build-ruby.sh -a ${{ matrix.arch }} -r ${{ matrix.ruby-version }} cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
-        env:
-          RUBY_VERSIONS: ${{ matrix.ruby-version }}
-          ARCHITECTURES: ${{ matrix.arch }}
+            # Run build-ruby.sh with bash login shell to ensure MSYS2 PATH is inherited
+            bash -l ./build-ruby.sh -a ${{ matrix.arch }} -r ${{ matrix.ruby-version }} cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
       - name: package ${{ matrix.arch }}
         # shell: bash
         working-directory: windows
