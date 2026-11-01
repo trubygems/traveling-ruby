@@ -97,10 +97,11 @@ jobs:
       - name: build ruby ${{ matrix.ruby-version }} ${{ matrix.arch }}
         working-directory: windows
         run: |
-            # Enable MSYS2 environment (sets up PATH with dlltool from binutils)
-            # This runs in bash but ridk enable properly configures the MSYS2 PATH
-            ./output/${{ matrix.ruby-version }}/${{ matrix.arch }}/bin/ridk.cmd enable
-            # Verify dlltool is available
+            # Add MSYS2 ucrt64 bin to PATH for native gem compilation.
+            # ruby/setup-ruby-pkgs@v1 installs Ruby and MSYS2 at /c/hostedtoolcache/windows/Ruby/<version>/x64/msys64/ucrt64/
+            MSYS2_BIN="/c/hostedtoolcache/windows/Ruby/${{ matrix.ruby-version }}/x64/msys64/ucrt64/bin"
+            export PATH="$MSYS2_BIN:$PATH"
+            echo "MSYS2_BIN: $MSYS2_BIN"
             which dlltool
             dlltool --version
             uname -m
