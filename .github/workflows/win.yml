@@ -74,6 +74,15 @@ jobs:
           # restore-keys: |
           #   windows-rubyinstaller-cache-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-${{ matrix.arch }}
 
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW
+          update: true
+          install: >
+            make
+            binutils
+            base-devel
+
       - uses: ruby/setup-ruby-pkgs@v1
         # if: matrix.arch != 'arm64'
         with:
