@@ -88,6 +88,17 @@ jobs:
       - name: Add RubyInstaller MSYS2 to PATH
         shell: bash
         run: |
+          # Ensure dlltool (from binutils) is in PATH for native gem compilation.
+          # RedCloth 4.3.4 needs dlltool for .def file generation on Windows.
+          if [ -z "$(which dlltool 2>/dev/null)" ]; then
+            for p in "$RI_DEVKIT/ucrt64/bin" "$RI_DEVKIT/mingw64/bin" "$RI_DEVKIT/usr/bin"; do
+              if [ -f "$p/dlltool.exe" ]; then
+                echo "$p" >> $GITHUB_PATH
+                echo "Added $p to PATH (found dlltool)"
+                break
+              fi
+            done
+          fi
           echo "$RI_DEVKIT/ucrt64/bin" >> $GITHUB_PATH
           echo "$RI_DEVKIT/usr/bin" >> $GITHUB_PATH
       # - name: build ruby ${{ matrix.ruby-version }} ${{ matrix.arch }}
