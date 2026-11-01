@@ -19,7 +19,7 @@ gem 'RedCloth', force_ruby_platform: true unless Gem.win_platform?
 gem 'redcarpet', force_ruby_platform: true unless Gem.win_platform?
 gem 'rexml'
 gem 'rinda'
-gem 'stringio', force_ruby_platform: true
+gem 'stringio', force_ruby_platform: true unless Gem.win_platform?
 gem 'test-unit'
 gem 'thruster', force_ruby_platform: true, require: false
 gem 'thin', force_ruby_platform: true
@@ -92,7 +92,7 @@ gem "image_processing", "~> 1.2"
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
-  gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
+  gem "debug", platforms: %i[ mri windows ], require: "debug/prelude" unless Gem.win_platform?
 
   # Audits gems for known security defects (use config/bundler-audit.yml to ignore issues)
   gem "bundler-audit", require: false
