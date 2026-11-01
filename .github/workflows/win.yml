@@ -74,15 +74,6 @@ jobs:
           # restore-keys: |
           #   windows-rubyinstaller-cache-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-${{ matrix.arch }}
 
-      - uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          update: true
-          install: >
-            make
-            binutils
-            base-devel
-
       - uses: ruby/setup-ruby-pkgs@v1
         # if: matrix.arch != 'arm64'
         with:
@@ -93,6 +84,15 @@ jobs:
           # mingw:             ccache cmake pkg-config libtool openssl ncurses gmp libffi libyaml sqlite xz libmariadbclient libpqxx icu libssh2 libxml2 libxslt clang cc autotools doxygen graphviz gcc-libs gdbm libyaml libffi pdcurses openssl gmp tk
           ruby-version: ${{ matrix.ruby-version }}
           # bundler-cache: true
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >
+            make
+            binutils
+            base-devel
       # - name: build ruby ${{ matrix.ruby-version }} ${{ matrix.arch }}
       #   # shell: msys2 {0}
       #   if: matrix.arch == 'arm64'
