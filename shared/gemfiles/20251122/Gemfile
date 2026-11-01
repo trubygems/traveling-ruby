@@ -19,7 +19,8 @@ gem 'RedCloth', force_ruby_platform: true unless Gem.win_platform?
 gem 'redcarpet', force_ruby_platform: true unless Gem.win_platform?
 gem 'rexml'
 gem 'rinda'
-gem 'stringio', force_ruby_platform: true unless Gem.win_platform?
+gem 'stringio', force_ruby_platform: true
+gem 'io-console', force_ruby_platform: true
 gem 'test-unit'
 gem 'thruster', force_ruby_platform: true, require: false
 gem 'thin', force_ruby_platform: true
