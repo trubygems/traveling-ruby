@@ -79,7 +79,7 @@ jobs:
         with:
           # working-directory: shared/gemfiles/${{ env.PKG_DATE }}
           # msys2: icu-devel
-          mingw:             icu 7zip gcc pkg-config sqlite3 libxml2 libxslt libiconv libmariadbclient libpqxx xz gcc-libs gcc
+          mingw:             icu 7zip gcc make pkg-config binutils sqlite3 libxml2 libxslt libiconv libmariadbclient libpqxx xz gcc-libs gcc
           # mingw:             ccache cmake libtool openssl ncurses gmp libffi libyaml sqlite xz libmariadbclient libpqxx icu libssh2 libxml2 libxslt clang cc autotools doxygen graphviz gcc-libs gdbm libyaml libffi pdcurses openssl gmp tk
           # mingw:             ccache cmake pkg-config libtool openssl ncurses gmp libffi libyaml sqlite xz libmariadbclient libpqxx icu libssh2 libxml2 libxslt clang cc autotools doxygen graphviz gcc-libs gdbm libyaml libffi pdcurses openssl gmp tk
           ruby-version: ${{ matrix.ruby-version }}
@@ -119,6 +119,11 @@ jobs:
       #     # Update MSYS2 and install required build tools
       #     ./output/${{ matrix.ruby-version }}/${{ matrix.arch }}/bin/ridk.cmd exec sh -c "pacman -Syu --noconfirm"
       #     ./output/${{ matrix.ruby-version }}/${{ matrix.arch }}/bin/ridk.cmd exec sh -c "pacman -S --noconfirm make gcc mingw-w64-clang-aarch64-clang"
+
+      - name: Enable MSYS2 toolchain
+        shell: bash
+        run: |
+          ridk enable
 
       - name: build ruby ${{ matrix.ruby-version }} ${{ matrix.arch }}
         working-directory: windows
