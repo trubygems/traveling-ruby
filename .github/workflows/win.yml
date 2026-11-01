@@ -2,29 +2,17 @@ name: Windows
 on:
   workflow_dispatch:
   push:
-    branches: [ main, test/win-ext-arm, test-windows ]
+    branches: [ main, test/win-ext-arm ]
   pull_request:
     branches: [ main ]
   release:
     types: [published]
-
-# Commit message keyword filtering:
-# - "(windows)" → run Windows CI
-# - "(macos)", "(macos-arm64)", "(macos-x86_64)", "(linux)", "(linux-musl)" → skip Windows
-# - No keyword → run all (backward compatible)
 
 env:
   PKG_DATE: 20251122
 
 jobs:
   build-windows:
-    if: |
-      !contains(github.event.head_commit.message || '', '(macos)') &&
-      !contains(github.event.head_commit.message || '', '(macos-arm64)') &&
-      !contains(github.event.head_commit.message || '', '(macos-x86_64)') &&
-      !contains(github.event.head_commit.message || '', '(linux)') &&
-      !contains(github.event.head_commit.message || '', '(linux-musl)') &&
-      (contains(github.event.head_commit.message || '', '(windows)') || !contains(github.event.head_commit.message || '', '('))
     defaults:
         run:
           shell: bash
@@ -55,28 +43,6 @@ jobs:
           # pacboy: icu:p 7zip:p gcc:p pkg-config:p sqlite3:p libxml2:p libxslt:p libiconv:p libmariadbclient:p libpqxx:p xz:p gcc-libs:p
           # pacboy: icu:p 7zip:p ccache:p cmake:p libtool:p openssl:p ncurses:p gmp:p libffi:p libyaml:p sqlite:p xz:p libmariadbclient:p libpqxx:p libssh2:p libxml2:p libxslt:p clang:p cc:p autotools:p doxygen:p graphviz:p gcc-libs:p gdbm:p libyaml:p libffi:p pdcurses:p openssl:p gmp:p tk:p
           
-      - uses: msys2/setup-msys2@v2
-        with:
-          msystem: UCRT64
-          path-type: inherit
-          update: true
-          release: true
-          install: >
-            mingw-w64-ucrt-x86_64-binutils
-            mingw-w64-ucrt-x86_64-make
-            mingw-w64-ucrt-x86_64-gcc
-            mingw-w64-ucrt-x86_64-pkg-config
-            mingw-w64-ucrt-x86_64-icu
-            mingw-w64-ucrt-x86_64-7zip
-            mingw-w64-ucrt-x86_64-sqlite3
-            mingw-w64-ucrt-x86_64-libxml2
-            mingw-w64-ucrt-x86_64-libxslt
-            mingw-w64-ucrt-x86_64-libiconv
-            mingw-w64-ucrt-x86_64-libmariadbclient
-            mingw-w64-ucrt-x86_64-libpqxx
-            mingw-w64-ucrt-x86_64-xz
-            mingw-w64-ucrt-x86_64-gcc-libs
-
       - uses: actions/checkout@v5
       - name: Cache vendor gems
         id: cache-vendor
@@ -101,20 +67,56 @@ jobs:
         with:
           # working-directory: shared/gemfiles/${{ env.PKG_DATE }}
           # msys2: icu-devel
-          # mingw packages now installed via msys2/setup-msys2@v2
+          mingw:             icu 7zip gcc pkg-config sqlite3 libxml2 libxslt libiconv libmariadbclient libpqxx xz gcc-libs gcc
+          # mingw:             ccache cmake libtool openssl ncurses gmp libffi libyaml sqlite xz libmariadbclient libpqxx icu libssh2 libxml2 libxslt clang cc autotools doxygen graphviz gcc-libs gdbm libyaml libffi pdcurses openssl gmp tk
+          # mingw:             ccache cmake pkg-config libtool openssl ncurses gmp libffi libyaml sqlite xz libmariadbclient libpqxx icu libssh2 libxml2 libxslt clang cc autotools doxygen graphviz gcc-libs gdbm libyaml libffi pdcurses openssl gmp tk
           ruby-version: ${{ matrix.ruby-version }}
           # bundler-cache: true
+      # - name: build ruby ${{ matrix.ruby-version }} ${{ matrix.arch }}
+      #   # shell: msys2 {0}
+      #   if: matrix.arch == 'arm64'
+      #   working-directory: windows
+      #   run: |
+      #       set MSYSTEM=CLANGARM64
+      #       ridk install 2 3
+      #       ridk enable
+      #       uname -m
+      #       ridk exec sh -c "mkdir -p cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}"
+      #       ridk exec sh -c "./build-ruby.sh -a ${{ matrix.arch }} -r ${{ matrix.ruby-version }} cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}"
+      #   env:
+      #     RUBY_VERSIONS: ${{ matrix.ruby-version }}
+      #     ARCHITECTURES: ${{ matrix.arch }}
+      # - name: Setup MSYS2 (CLANGARM64)
+      #   uses: msys2/setup-msys2@v2
+      #   with:
+      #     msystem: CLANGARM64
+      #     update: true
+      #     release: true
+      #     install: >
+      #       autotools
+      #       mingw-w64-clang-aarch64-clang
+      #       ruby
+      # - name: Setup RubyInstaller MSYS2 toolchain (arm64)
+      #   if: matrix.arch == 'arm64'
+      #   working-directory: windows
+      #   run: |
+      #     # Enable MSYS2 environment
+      #     mkdir -p cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
+      #     EXTRACT_ONLY=1 ./build-ruby.sh -a ${{ matrix.arch }} -r ${{ matrix.ruby-version }} cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
+      #     ./output/${{ matrix.ruby-version }}/${{ matrix.arch }}/bin/ridk.cmd enable
+      #     # Update MSYS2 and install required build tools
+      #     ./output/${{ matrix.ruby-version }}/${{ matrix.arch }}/bin/ridk.cmd exec sh -c "pacman -Syu --noconfirm"
+      #     ./output/${{ matrix.ruby-version }}/${{ matrix.arch }}/bin/ridk.cmd exec sh -c "pacman -S --noconfirm make gcc mingw-w64-clang-aarch64-clang"
 
       - name: build ruby ${{ matrix.ruby-version }} ${{ matrix.arch }}
-        shell: msys2 {0}
         working-directory: windows
-        env:
-          RUBY_VERSIONS: ${{ matrix.ruby-version }}
-          ARCHITECTURES: ${{ matrix.arch }}
         run: |
             uname -m
             mkdir -p cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
             ./build-ruby.sh -a ${{ matrix.arch }} -r ${{ matrix.ruby-version }} cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
+        env:
+          RUBY_VERSIONS: ${{ matrix.ruby-version }}
+          ARCHITECTURES: ${{ matrix.arch }}
       - name: package ${{ matrix.arch }}
         # shell: bash
         working-directory: windows
@@ -158,13 +160,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   test-windows-min:
-    if: |
-      !contains(github.event.head_commit.message || '', '(macos)') &&
-      !contains(github.event.head_commit.message || '', '(macos-arm64)') &&
-      !contains(github.event.head_commit.message || '', '(macos-x86_64)') &&
-      !contains(github.event.head_commit.message || '', '(linux)') &&
-      !contains(github.event.head_commit.message || '', '(linux-musl)') &&
-      (contains(github.event.head_commit.message || '', '(windows)') || !contains(github.event.head_commit.message || '', '('))
     needs: build-windows
     strategy:
       matrix:
@@ -195,13 +190,6 @@ jobs:
           RUBY_VERSIONS: ${{ matrix.ruby-version }}
           ARCHITECTURES: ${{ matrix.arch }}
   test-windows-full:
-    if: |
-      !contains(github.event.head_commit.message || '', '(macos)') &&
-      !contains(github.event.head_commit.message || '', '(macos-arm64)') &&
-      !contains(github.event.head_commit.message || '', '(macos-x86_64)') &&
-      !contains(github.event.head_commit.message || '', '(linux)') &&
-      !contains(github.event.head_commit.message || '', '(linux-musl)') &&
-      (contains(github.event.head_commit.message || '', '(windows)') || !contains(github.event.head_commit.message || '', '('))
     needs: build-windows
     strategy:
       matrix:
