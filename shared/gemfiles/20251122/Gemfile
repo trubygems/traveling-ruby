@@ -36,7 +36,7 @@ gem 'nokogiri', force_ruby_platform: true
 
 # # wont build on windows arm
 
-gem 'curses', force_ruby_platform: true
+# gem 'curses', force_ruby_platform: true  # removed from Windows: Ruby ships curses built-in
 gem 'rugged', force_ruby_platform: true
 
 
@@ -82,7 +82,7 @@ gem "solid_cable"
 gem "bootsnap", require: false
 
 # Deploy this application anywhere as a Docker container [https://kamal-deploy.org]
-gem "kamal", require: false
+gem "kamal", require: false, force_ruby_platform: true unless Gem.win_platform?
 
 # Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
 # gem "thruster", require: false
