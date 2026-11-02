@@ -9,16 +9,16 @@ on:
     types: [published]
 
 # Commit message keyword filtering (job if: below):
-# - "(windows-arm64)" → run
-# - Anything else → skip (opt-in until arm64 is green)
+# - No "(" in the message, "(windows)" or "(windows-arm64)" → run
+# - Any other keyword, e.g. "(windows-x86_64)", "(linux)" → skip
 # RubyInstaller only ships arm64 builds for Ruby 3.4+.
 
 env:
-  PKG_DATE: 20260922
+  PKG_DATE: 20261102
 
 jobs:
   build-windows:
-    if: contains((github.event.head_commit.message || ''), '(windows-arm64)')
+    if: (!contains((github.event.head_commit.message || ''), '(') || contains((github.event.head_commit.message || ''), '(windows)') || contains((github.event.head_commit.message || ''), '(windows-arm64)'))
     defaults:
         run:
           shell: bash
@@ -169,7 +169,7 @@ jobs:
 
   test-windows-min:
     needs: build-windows
-    if: contains((github.event.head_commit.message || ''), '(windows-arm64)')
+    if: (!contains((github.event.head_commit.message || ''), '(') || contains((github.event.head_commit.message || ''), '(windows)') || contains((github.event.head_commit.message || ''), '(windows-arm64)'))
     strategy:
       matrix:
         arch: [arm64]
@@ -195,7 +195,7 @@ jobs:
           ARCHITECTURES: ${{ matrix.arch }}
   test-windows-full:
     needs: build-windows
-    if: contains((github.event.head_commit.message || ''), '(windows-arm64)')
+    if: (!contains((github.event.head_commit.message || ''), '(') || contains((github.event.head_commit.message || ''), '(windows)') || contains((github.event.head_commit.message || ''), '(windows-arm64)'))
     strategy:
       matrix:
         arch: [arm64]

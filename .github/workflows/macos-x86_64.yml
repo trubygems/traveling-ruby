@@ -22,7 +22,7 @@ on:
 # - No keyword → run all (backward compatible)
 
 env:
-  PKG_DATE: 20260922
+  PKG_DATE: 20261102
   PLATFORM: macos
   ARCHITECTURES: x86_64
 
