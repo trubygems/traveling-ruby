@@ -7,17 +7,22 @@ gem 'eventmachine', force_ruby_platform: true
 gem 'fast-stemmer'
 gem 'ffi', force_ruby_platform: true
 gem 'fiddle', force_ruby_platform: true
+gem 'fugit'
 gem 'hitimes'
 gem 'json'
 gem 'mini_portile2'
 gem 'mysql2', force_ruby_platform: true
+gem 'pact_broker'
 gem 'pact_broker-client'
+gem 'padrino-core'
 gem 'pg', force_ruby_platform: true
 gem 'psych', force_ruby_platform: true
 gem 'puma', force_ruby_platform: true
 gem 'RedCloth'
 gem 'redcarpet'
 gem 'rexml'
+gem 'rake'
+gem 'resolv'
 gem 'rinda'
 gem 'stringio', force_ruby_platform: true
 gem 'test-unit'
@@ -31,7 +36,6 @@ gem 'yajl-ruby'
 
 gem "sqlite3", force_ruby_platform: true
 gem 'nokogiri', force_ruby_platform: true
-# gem 'pact_broker'
 # gem 'rails'
 
 # # wont build on windows arm

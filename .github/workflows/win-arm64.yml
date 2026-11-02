@@ -27,7 +27,7 @@ jobs:
     strategy:
       matrix:
         arch: [arm64]
-        ruby-version: [3.4.12, 4.0.7]
+        ruby-version: [3.4.12, 4.0.9]
       fail-fast: false
     steps:
       # - uses: msys2/setup-msys2@v2
@@ -50,7 +50,7 @@ jobs:
         uses: actions/cache@v4
         with:
             path: windows/cache/vendor
-            key: windows-vendor-cache-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-${{ matrix.arch }}-${{ hashFiles(format('shared/gemfiles/{0}/Gemfile.lock', env.PKG_DATE)) }}
+            key: windows-vendor-cache-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-${{ matrix.arch }}-${{ hashFiles(format('shared/gemfiles/{0}/Gemfile*', env.PKG_DATE)) }}
             # restore-keys: |
             #   windows-vendor-cache-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-${{ matrix.arch }}-windows-vendor-cache-${{ env.PKG_DATE }}-
 
@@ -173,7 +173,7 @@ jobs:
     strategy:
       matrix:
         arch: [arm64]
-        ruby-version: [3.4.12, 4.0.7]
+        ruby-version: [3.4.12, 4.0.9]
       fail-fast: false
     runs-on: windows-11-arm
     steps:
@@ -199,7 +199,7 @@ jobs:
     strategy:
       matrix:
         arch: [arm64]
-        ruby-version: [4.0.7]
+        ruby-version: [4.0.9]
       fail-fast: false
     runs-on: windows-11-arm
     steps:
