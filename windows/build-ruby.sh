@@ -385,9 +385,12 @@ DLLS=(
 	libstdc++-6.dll
 	libgcc_s_seh-1.dll
 	libffi-8.dll
+	libc++.dll
+	libunwind.dll
 )
 
 # libstdc++-6.dll and libgcc_s_seh-1.dll are needed for unf_ext and eventmachine on x64
+# libc++.dll and libunwind.dll are their clang equivalents on arm64
 # libffi-8.dll is needed for ffi; RubyInstaller 4.0 no longer ships it as fiddle is now a bundled gem
 # pacman -S mingw-w64-cross-mingwarm64-gcc
 # provides /opt/lib/gcc/aarch64-w64-mingw32/15.0.1/libstdc++-6.dll
