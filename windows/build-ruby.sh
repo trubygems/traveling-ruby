@@ -99,8 +99,6 @@ set RUBYLIB=%RUBYLIB%;%~dp0..\\lib\\ruby\\site_ruby
 set RUBYLIB=%RUBYLIB%;%~dp0..\\lib\\ruby\\vendor_ruby\\%RUBY_COMPAT_VERSION%
 set RUBYLIB=%RUBYLIB%;%~dp0..\\lib\\ruby\\vendor_ruby\\%RUBY_COMPAT_VERSION%\\%RUBY_ARCH%
 set RUBYLIB=%RUBYLIB%;%~dp0..\\lib\\ruby\\vendor_ruby
-set RUBYLIB=%RUBYLIB%;%~dp0..\\lib\\ruby\\%RUBY_COMPAT_VERSION%
-set RUBYLIB=%RUBYLIB%;%~dp0..\\lib\\ruby\\%RUBY_COMPAT_VERSION%\\%RUBY_ARCH%
 set RUBY_COMPAT_VERSION=
 set RUBY_ARCH=
 
