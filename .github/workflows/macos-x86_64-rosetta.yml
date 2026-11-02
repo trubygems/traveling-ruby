@@ -1,0 +1,107 @@
+name: macOS x86_64 via Rosetta
+
+# Builds the macOS x86_64 runtime and Ruby on an Apple Silicon runner under
+# Rosetta and on an Intel runner, then tests each package on both kinds of
+# runner. Nothing is pushed to the registry: the runtime is built fresh.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ruby-version:
+        description: 'Ruby version to build'
+        required: true
+        default: '3.4.12'
+  push:
+    branches: [ macos-x86_64-rosetta ]
+
+permissions:
+  contents: read
+
+env:
+  PLATFORM: macos
+  ARCHITECTURES: x86_64
+  RUBY_VERSIONS: ${{ inputs.ruby-version || '3.4.12' }}
+
+jobs:
+  build:
+    name: build on ${{ matrix.runner }}
+    strategy:
+      matrix:
+        runner: [ macos-15, macos-15-intel ]
+      fail-fast: false
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Host
+        run: |
+          uname -m
+          sysctl -n machdep.cpu.brand_string
+          sysctl -n hw.ncpu
+          xcodebuild -version
+          if [ "$(uname -m)" = arm64 ]; then
+            arch -x86_64 /usr/bin/true || sudo softwareupdate --install-rosetta --agree-to-license
+            arch -x86_64 /bin/bash -c 'uname -m'
+          fi
+
+      - name: Build runtime
+        working-directory: macos
+        run: |
+          rake stash_conflicting_paths
+          time rake runtime
+          rake unstash_conflicting_paths
+
+      - name: Build Ruby
+        working-directory: macos
+        run: |
+          rake stash_conflicting_paths
+          time rake --trace
+          time rake package_full
+          rake unstash_conflicting_paths
+
+      - name: Check binary
+        working-directory: macos
+        run: |
+          file output/*/bin.real/ruby
+          lipo -archs output/*/bin.real/ruby | grep -qx x86_64
+          otool -L output/*/bin.real/ruby
+
+      - name: Test
+        working-directory: macos
+        run: time rake test
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: pkg-built-on-${{ matrix.runner }}
+          path: macos/traveling-ruby*.tar.gz
+          retention-days: 7
+
+  test:
+    name: built on ${{ matrix.built-on }}, run on ${{ matrix.runner }}
+    needs: build
+    if: ${{ !cancelled() }}
+    strategy:
+      matrix:
+        built-on: [ macos-15, macos-15-intel ]
+        runner: [ macos-15, macos-15-intel ]
+      fail-fast: false
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: pkg-built-on-${{ matrix.built-on }}
+
+      - name: Smoke test
+        run: |
+          uname -m
+          for pkg in traveling-ruby-*-macos-x86_64.tar.gz traveling-ruby-*-macos-x86_64-full.tar.gz; do
+            echo "::group::$pkg"
+            dir=$(basename "$pkg" .tar.gz)
+            mkdir "$dir"
+            tar -C "$dir" -xzf "$pkg"
+            "$dir/bin/ruby" -v
+            "$dir/bin/ruby" -e 'puts RbConfig::CONFIG["host"]; require "openssl"; puts OpenSSL::OPENSSL_LIBRARY_VERSION; require "zlib"; require "psych"; require "readline" rescue nil; puts :ok'
+            "$dir/bin/gem" list | head -20
+            echo "::endgroup::"
+          done

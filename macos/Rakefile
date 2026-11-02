@@ -3,6 +3,13 @@ REVISIONS     = File.read("../versions/RUBY_REVISIONS.txt").scan(/^(\S+)\s+(\d+)
 RUBY_VERSIONS = ENV['RUBY_VERSIONS'] ? [].push(ENV['RUBY_VERSIONS']) : File.read("../versions/RUBY_VERSIONS.txt").strip.split(/\s+/)
 ARCHITECTURES = ENV['ARCHITECTURES'] ? [].push(ENV['ARCHITECTURES']) : ["x86_64","arm64"]
 
+# On Apple Silicon, x86_64 is built and tested under Rosetta: the scripts then
+# see uname -m as x86_64, and the compilers target it by default.
+ARM64_HOST = `sysctl -in hw.optional.arm64`.strip == "1"
+def under(arch)
+  arch == "x86_64" && ARM64_HOST ? "arch -x86_64 /bin/bash " : ""
+end
+
 # if RUBY_VERSIONS.any? { |version| Gem::Version.new(version) < Gem::Version.new('3.1.0') }
 #   ENV['OPENSSL_1_1_LEGACY'] = 'true'
 #   puts "OpenSSL 1.1.1 legacy mode enabled"
@@ -88,15 +95,15 @@ ARCHITECTURES.each do |arch|
 
     desc "Create full fat package for Ruby #{ruby_version} #{arch}"
     task "package_full:#{ruby_version}:#{arch}" => ["#{gem_dir}/ok"] do
-      sh "./package.sh -f -r #{package_full} output/#{ruby_version}-#{arch}"
+      sh "#{under(arch)}./package.sh -f -r #{package_full} output/#{ruby_version}-#{arch}"
     end
 
     file(package => "output/#{ruby_version}-#{arch}/bin") do
-      sh "./package.sh -r #{package} output/#{ruby_version}-#{arch}"
+      sh "#{under(arch)}./package.sh -r #{package} output/#{ruby_version}-#{arch}"
     end
 
     file("#{gem_dir}/ok" => "output/#{ruby_version}-#{arch}/bin") do
-      sh "./package.sh -E #{gem_dir} output/#{ruby_version}-#{arch}"
+      sh "#{under(arch)}./package.sh -E #{gem_dir} output/#{ruby_version}-#{arch}"
       touch "#{gem_dir}/ok"
     end
 
@@ -105,13 +112,13 @@ ARCHITECTURES.each do |arch|
     file("output/#{ruby_version}-#{arch}/bin" => "runtime/ok") do
       sh "mkdir -p output/#{ruby_version}-#{arch}"
       sh "mkdir -p /tmp/ruby-#{ruby_version}-#{arch}"
-      sh "./build-ruby.sh -a #{arch}  -r #{ruby_version} -w /tmp/ruby-#{ruby_version}-#{arch} runtime output/#{ruby_version}-#{arch}"
+      sh "#{under(arch)}./build-ruby.sh -a #{arch}  -r #{ruby_version} -w /tmp/ruby-#{ruby_version}-#{arch} runtime output/#{ruby_version}-#{arch}"
     end
 
 
     desc "Test Ruby #{ruby_version} #{arch}"
     task "test:#{ruby_version}:#{arch}" => "output/#{ruby_version}-#{arch}/bin" do
-      sh "./test-gems.sh output/#{ruby_version}-#{arch}"
+      sh "#{under(arch)}./test-gems.sh output/#{ruby_version}-#{arch}"
     end
 
     desc "Clean Ruby #{ruby_version} packages, but not the runtime"
@@ -124,7 +131,7 @@ end
 ARCHITECTURES.each do |arch|
   file "runtime/ok" => "setup-runtime.sh" do
     puts "Setting up runtime"
-    sh "./setup-runtime.sh -a #{arch} runtime"
+    sh "#{under(arch)}./setup-runtime.sh -a #{arch} runtime"
     sh "touch runtime/ok"
   end
 end
