@@ -15,67 +15,64 @@ on:
         default: false
         type: boolean
 
+# Commit message keyword filtering:
+# - "(macos-x86_64)" → run this workflow
+# - "(macos)" → run this workflow (umbrella for both macos arches)
+# - "(windows)", "(linux)", "(linux-musl)" → skip this workflow
+# - No keyword → run all (backward compatible)
+
 env:
   PKG_DATE: 20260922
   PLATFORM: macos
   ARCHITECTURES: x86_64
-  DEVELOPER_DIR: /Applications/Xcode_16.0.app/Contents/Developer
 
 jobs:
+  # Builds the runtime only when no cache exists for this Xcode and these
+  # runtime inputs; the make jobs restore it from the cache.
   package-runtime:
+    if: |
+      (contains(github.event.head_commit.message || '', '(macos-x86_64)') ||
+       contains(github.event.head_commit.message || '', '(macos)') ||
+       !contains(github.event.head_commit.message || '', '('))
     runs-on: macos-15-intel
     outputs:
       cache-key: ${{ steps.cache-key.outputs.key }}
     steps:
       - uses: actions/checkout@v5
-      
-      # - name: Generate cache key
-      #   id: cache-key
-      #   run: |
-      #     # Create cache key based on relevant files and inputs
-      #     HASH=$(find macos/setup-runtime.sh macos/internal/ -type f -exec shasum {} \; | shasum | cut -d' ' -f1)
-      #     CLEAR_CACHE="${{ github.event.inputs.clear_cache }}"
-      #     if [ "$CLEAR_CACHE" = "true" ]; then
-      #       HASH="${HASH}-cleared-$(date +%s)"
-      #     fi
-      #     echo "key=macos-x86_64-runtime-${HASH}" >> $GITHUB_OUTPUT
-      #     echo "Runtime cache key: macos-x86_64-runtime-${HASH}"
-      
 
-      # - name: Restore runtime cache
-      #   id: cache-runtime
-      #   uses: actions/cache@v4
-      #   with:
-      #     path: macos/runtime/
-      #     key: ${{ steps.cache-key.outputs.key }}
-      
-      - name: Build runtime
-        if: github.event.inputs.clear_cache == 'true'
+      - name: Generate cache key
+        id: cache-key
         run: |
-          echo "Building new runtime..."
-          ls /Applications/Xcode*
+          XCODE=$(xcodebuild -version | head -1 | tr ' ' '-')
+          KEY="macos-${ARCHITECTURES}-runtime-${XCODE}-${{ hashFiles('macos/setup-runtime.sh', 'macos/internal/bin/**', 'macos/internal/reset_environment.sh', 'macos/internal/check_requirements.sh', 'macos/internal/*.patch', 'shared/library.sh') }}"
+          if [ "${{ inputs.clear_cache }}" = "true" ]; then
+            KEY="${KEY}-${{ github.run_id }}"
+          fi
+          echo "key=${KEY}" >> "$GITHUB_OUTPUT"
+          echo "Runtime cache key: ${KEY}"
+
+      - name: Check runtime cache
+        id: cache-runtime
+        uses: actions/cache/restore@v4
+        with:
+          path: macos/runtime/
+          key: ${{ steps.cache-key.outputs.key }}
+          lookup-only: true
+
+      - name: Build runtime
+        if: steps.cache-runtime.outputs.cache-hit != 'true'
+        run: |
           cd macos
           rake stash_conflicting_paths
           rake runtime
           rake unstash_conflicting_paths
-        env:
-          DEVELOPER_DIR: /Applications/Xcode_16.0.app/Contents/Developer
-      
-      - name: Verify runtime
-        run: |
-          echo "Verifying runtime exists..."
-          ls -la macos/runtime/ || echo "Runtime directory not found"
 
-      - name: package macos x86_64 runtime
-        if: github.event.inputs.clear_cache == 'true'
-        run: ./scripts/package-macos-runtime.sh     
-
-      - name: 'Upload Runtime - macos x86_64'
-        if: github.event.inputs.clear_cache == 'true'
-        uses: actions/upload-artifact@v5
+      - name: Save runtime cache
+        if: steps.cache-runtime.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
         with:
-          name: macos-runtime-x86_64-gha.tar.gz
-          path: macos/macos-runtime-*.tar.gz
+          path: macos/runtime/
+          key: ${{ steps.cache-key.outputs.key }}
 
   setup-ruby-versions:
     runs-on: ubuntu-latest
@@ -88,7 +85,7 @@ jobs:
           echo "ruby_versions=['3.3.13','3.4.12','4.0.7']" >> $GITHUB_OUTPUT
 
   make-macos-x86_64:
-    needs: [  package-runtime, setup-ruby-versions ]
+    needs: [ package-runtime, setup-ruby-versions ]
     strategy:
       matrix:
         os: [macos-15-intel]
@@ -97,47 +94,46 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
-      
-      # - name: Restore runtime cache
-      #   uses: actions/cache@v4
-      #   with:
-      #     path: macos/runtime/
-      #     key: ${{ needs.package-runtime.outputs.cache-key }}
-      #     fail-on-cache-miss: true
-      
-      - name: download macos x86_64 runtime
-        run: ./scripts/download-macos-runtime.sh
-        env:
-          RUBY_VERSIONS: ${{ matrix.ruby-version }}
 
-      - name: build x86_64
+      - name: Restore runtime cache
+        uses: actions/cache/restore@v4
+        with:
+          path: macos/runtime/
+          key: ${{ needs.package-runtime.outputs.cache-key }}
+          fail-on-cache-miss: true
+
+      # The checkout leaves setup-runtime.sh newer than runtime/ok, which would
+      # make rake rebuild the runtime we just restored.
+      - name: Mark runtime as up to date
+        run: touch macos/runtime/ok
+
+      - name: Cache gems
+        uses: actions/cache@v4
+        with:
+          path: macos/runtime/vendor/cache
+          key: macos-x86_64-gems-${{ hashFiles('shared/gemfiles/*/Gemfile.lock') }}
+
+      - name: Build x86_64
         run: |
-          ls /Applications/Xcode*
           cd macos
           rake stash_conflicting_paths
           rake --trace
-            rake package_full
+          rake package_full
           rake unstash_conflicting_paths
           ls
         env:
           RUBY_VERSIONS: ${{ matrix.ruby-version }}
-      # - name: package macos x86_64 runtime
-      #   run: ./scripts/package-macos-runtime.sh
-      #   env:
-      #     RUBY_VERSIONS: ${{ matrix.ruby-version }}
-      # - name: 'Upload Runtime - macos x86_64'
-      #   uses: actions/upload-artifact@v5
-      #   with:
-      #     name: macos-runtime-x86_64-gha-openssl_1_1.tar.gz
-      #     path: macos/macos-runtime-*.tar.gz
-      - name: package gems
+
+      - name: Package gems
         run: ./scripts/package-gems.sh
-      - name: "Upload Artifact- macos x86_64"
+
+      - name: 'Upload Artifact- macos x86_64'
         uses: actions/upload-artifact@v5
         with:
           name: traveling-ruby-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-macos-x86_64.tar.gz
           path: macos/traveling-ruby*.tar.gz
-      - name: test
+
+      - name: Test
         run: |
           cd macos
           rake test
