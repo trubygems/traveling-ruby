@@ -16,10 +16,3 @@ $OVERRIDDEN_ENVIRONMENTS = {
   'SSL_CERT_FILE' => ENV['OLD_SSL_CERT_FILE']
 }
 
-# The wrapper puts our lib/ruby directories on RUBYLIB, and RUBYLIB entries come
-# before the point where RubyGems inserts activated gems. That lets default gems
-# in the stdlib (e.g. prism, json) shadow newer installed versions, so move our
-# entries behind that point, as they would be without RUBYLIB.
-traveling_ruby_lib = File.expand_path('..', __dir__) + '/'
-traveling_ruby_paths, other_paths = $LOAD_PATH.partition { |path| path.start_with?(traveling_ruby_lib) }
-$LOAD_PATH.replace(other_paths + traveling_ruby_paths)

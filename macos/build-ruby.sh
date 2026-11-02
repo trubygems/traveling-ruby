@@ -372,6 +372,9 @@ if [[ "$GEMFILE" != "" ]]; then
 		run "$TMPBUILDROOT/bin/gem" update --system $RUBYGEMS_VERSION --no-document
 		run "$TMPBUILDROOT/bin/gem" uninstall -x rubygems-update
 	fi
+	# Installed after the RubyGems update, which would remove it.
+	run mkdir -p "$TMPBUILDROOT/lib/ruby/site_ruby/$RUBY_COMPAT_VERSION/rubygems/defaults"
+	run cp "$SELFDIR/../shared/rubygems_operating_system.rb" "$TMPBUILDROOT/lib/ruby/site_ruby/$RUBY_COMPAT_VERSION/rubygems/defaults/operating_system.rb"
 
 	# Install Bundler, either from cache or directly.
 	if [[ -e "$RUNTIME_DIR/vendor/cache/bundler-$BUNDLER_VERSION.gem" ]]; then

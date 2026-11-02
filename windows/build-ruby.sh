@@ -93,7 +93,9 @@ GOTO :EOF
 set RUBY_COMPAT_VERSION=$RUBY_COMPAT_VERSION
 set RUBY_ARCH=$RUBY_ARCH
 
-set RUBYLIB=%~dp0..\\lib\\ruby\\site_ruby\\%RUBY_COMPAT_VERSION%
+set RUBYLIB=%~dp0..\\lib\\ruby\\%RUBY_COMPAT_VERSION%
+set RUBYLIB=%RUBYLIB%;%~dp0..\\lib\\ruby\\%RUBY_COMPAT_VERSION%\\%RUBY_ARCH%
+set RUBYLIB=%RUBYLIB%;%~dp0..\\lib\\ruby\\site_ruby\\%RUBY_COMPAT_VERSION%
 set RUBYLIB=%RUBYLIB%;%~dp0..\\lib\\ruby\\site_ruby\\%RUBY_COMPAT_VERSION%\\%RUBY_ARCH%
 set RUBYLIB=%RUBYLIB%;%~dp0..\\lib\\ruby\\site_ruby
 set RUBYLIB=%RUBYLIB%;%~dp0..\\lib\\ruby\\vendor_ruby\\%RUBY_COMPAT_VERSION%
@@ -190,7 +192,11 @@ if [[ "$OS" =~ Windows ]]; then
 	echo "+ MSYS2 for gem builds: $(ruby -e 'require "ruby_installer/runtime"; puts RubyInstaller::Runtime.msys2_installation.msys_path' 2>&1)"
 	echo "+ $(command -v make sh rm dlltool gcc | tr '\n' ' ')"
 else
-	chmod +x $OUTPUT_DIR/bin/gem
+	# Off Windows, bin/gem and bin/bundle would run the host Ruby (or not run
+	# at all), so native gems can't be built. Ship Ruby with just Bundler,
+	# which is pure Ruby and can be installed by the host's gem command.
+	GEMFILE=
+	BUNDLER_INSTALL_ONLY=1
 fi
 RUBY_COMPAT_VERSION=`grep '"ruby_version"' "$OUTPUT_DIR"/lib/ruby/*/*/rbconfig.rb | sed -E 's/.*=//; s/.*"(.*)".*/\1/'`
 RUBY_ARCH=`grep '"arch"' "$OUTPUT_DIR"/lib/ruby/*/*/rbconfig.rb | sed -E 's/.*=//; s/.*"(.*)".*/\1/'`
@@ -215,6 +221,14 @@ fi
 
 
 echo $GEMFILE
+
+if [[ -n "$BUNDLER_INSTALL_ONLY" ]]; then
+	header "Installing Bundler with the host gem command..."
+	run gem install bundler -v "$BUNDLER_VERSION" --no-document \
+		--install-dir "$OUTPUT_DIR/lib/ruby/gems/$RUBY_COMPAT_VERSION" \
+		--bindir "$CACHE_DIR/host-bin"
+	echo
+fi
 
 if [[ "$GEMFILE" != "" ]]; then
 	# Restore cached gems.

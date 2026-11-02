@@ -289,6 +289,9 @@ if [[ -e /system_shared/gemfiles ]]; then
 		run /tmp/ruby/bin/gem update --system  $RUBYGEMS_VERSION --no-document
 	fi
 	run /tmp/ruby/bin/gem uninstall -x rubygems-update
+	# Installed after the RubyGems update, which would remove it.
+	run mkdir -p /tmp/ruby/lib/ruby/site_ruby/$RUBY_COMPAT_VERSION/rubygems/defaults
+	run cp /system_shared/rubygems_operating_system.rb /tmp/ruby/lib/ruby/site_ruby/$RUBY_COMPAT_VERSION/rubygems/defaults/operating_system.rb
 	run /tmp/ruby/bin/gem install bundler -v $BUNDLER_VERSION --no-document
 	if [[ "$DEBUG_SHELL" = after ]]; then
 		install_gems || true
