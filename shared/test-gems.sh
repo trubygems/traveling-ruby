@@ -129,6 +129,11 @@ if ! GEM_LIST=$("$BUILD_OUTPUT_DIR/bin/gem$EXE_SUFFIX" list) || [[ -z "$GEM_LIST
 fi
 echo "$GEM_LIST"
 echo "$GEM_LIST" >> "$BUILD_OUTPUT_DIR/test_report"
+# win32-registry needs fiddle, a bundled gem since Ruby 4.0, which the
+# default gems package leaves out
+if [[ "$PLATFORM" == "windows" ]] && ! grep -q "^fiddle " <<<"$GEM_LIST"; then
+	GEMS_TO_FAIL+=("win32/registry")
+fi
 # header "modifying gem names in $BUILD_OUTPUT_DIR for testing"
 GEMS=($("$BUILD_OUTPUT_DIR/bin/gem$EXE_SUFFIX" list | awk '{gsub(/tzinfo-data/, "tzinfo/data"); gsub(/bundler-audit/, "bundler/audit"); gsub(/ruby-vips/, "vips"); gsub(/rubyzip/, "zip"); gsub(/unicode-emoji/, "unicode/emoji"); gsub(/unicode-display_width/, "unicode/display_width"); gsub(/rinda/, "rinda/rinda"); gsub(/win32-registry/, "win32/registry"); gsub(/io-/, "io/"); gsub(/net-/, "net/"); gsub(/term-ansicolor/, "term/ansicolor"); gsub(/yajl-ruby/, "yajl"); gsub(/railties/, "rails/railtie"); gsub(/semver2/, "semver"); gsub(/pact-provider-verifier/, "pact/provider_verifier/cli/verify"); gsub(/pact_broker-client/, "pact_broker/client/tasks"); gsub(/pact-/, "pact/"); gsub(/faraday-/, "faraday/"); gsub(/action_text-trix/, "action_text/trix"); gsub(/actioncable/, "action_cable"); gsub(/actionmailbox/, "action_mailbox"); gsub(/actionmailer/, "action_mailer"); gsub(/actionpack/, "action_pack"); gsub(/actiontext/, "action_text"); gsub(/actionview/, "action_view"); gsub(/activejob/, "active_job"); gsub(/activemodel/, "active_model"); gsub(/activerecord/, "active_record"); gsub(/activestorage/, "active_storage"); gsub(/activesupport/, "active_support"); gsub(/as-notifications/, "as/notifications"); gsub(/rack-session/, "rack/session"); gsub(/rack-test/, "rack/test"); gsub(/ruby-next-core/, "ruby-next/core"); gsub(/websocket-driver/, "websocket/driver"); gsub(/websocket-extensions/, "websocket/extensions"); sub(/^sinatra /, "sinatra/base "); sub(/-ext$/, ""); sub(/-ruby$/, ""); sub(/english/, "English"); print $1}' | grep -v -- "-ext"))
 if [ ${#GEMS[@]} -eq 0 ]; then

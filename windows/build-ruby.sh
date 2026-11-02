@@ -369,9 +369,12 @@ DLLS=(
 	libunistring-5.dll
 	libzstd.dll
 	libstdc++-6.dll
+	libgcc_s_seh-1.dll
+	libffi-8.dll
 )
 
-# libstdc++-6.dll is needed for unf_ext gem on x64
+# libstdc++-6.dll and libgcc_s_seh-1.dll are needed for unf_ext and eventmachine on x64
+# libffi-8.dll is needed for ffi; RubyInstaller 4.0 no longer ships it as fiddle is now a bundled gem
 # pacman -S mingw-w64-cross-mingwarm64-gcc
 # provides /opt/lib/gcc/aarch64-w64-mingw32/15.0.1/libstdc++-6.dll
 
@@ -400,5 +403,18 @@ fi
 echo "+ Leaving $OUTPUT_DIR"
 popd >/dev/null
 echo
+
+# The DLLs are only copied when building on Windows, under MSYS2
+if [[ -d "$BIN_DIR" ]]; then
+	header "Checking that all imported DLLs are bundled"
+	for OBJDUMP in "$BIN_DIR/objdump.exe" "$BIN_DIR/llvm-objdump.exe"; do
+		if [[ -f "$OBJDUMP" ]]; then
+			export OBJDUMP
+			break
+		fi
+	done
+	run "$SELFDIR/sanity-check.sh" "$OUTPUT_DIR"
+	echo
+fi
 
 header "All done!"
