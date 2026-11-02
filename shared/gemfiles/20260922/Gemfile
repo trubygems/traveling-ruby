@@ -1,6 +1,7 @@
 source 'https://rubygems.org'
 
 gem 'bcrypt'
+gem 'bcrypt_pbkdf', force_ruby_platform: true
 gem 'bigdecimal', force_ruby_platform: true
 gem 'escape_utils'
 gem 'eventmachine', force_ruby_platform: true

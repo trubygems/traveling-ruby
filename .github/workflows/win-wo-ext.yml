@@ -18,6 +18,10 @@ jobs:
       matrix:
         arch: [x86_64, x86]
         ruby-version: [3.3.13, 3.4.12, 4.0.9]
+        # RubyInstaller 4.0 has no x86 build
+        exclude:
+          - arch: x86
+            ruby-version: 4.0.9
         include:
           - arch: arm64
             ruby-version: 4.0.9

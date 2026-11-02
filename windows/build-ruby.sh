@@ -308,6 +308,15 @@ pushd "$OUTPUT_DIR"
 
 run cp "$SELFDIR/../shared/ca-bundle.crt" lib/
 
+# RubyGems loads a single operating_system.rb and RubyInstaller ships its own,
+# so prepend the Traveling Ruby hook to it. Prepend, as RubyInstaller's code can
+# raise a LoadError (fiddle is not a default gem on Ruby 4.0), and RubyGems then
+# silently skips the rest of the file.
+echo "+ Prepending rubygems_operating_system.rb to RubyInstaller's operating_system.rb"
+OS_RB=lib/ruby/$RUBY_COMPAT_VERSION/rubygems/defaults/operating_system.rb
+{ cat "$SELFDIR/../shared/rubygems_operating_system.rb"; echo; cat "$OS_RB"; } > "$OS_RB.new"
+run mv "$OS_RB.new" "$OS_RB"
+
 run rm bin/{erb,rdoc,ri}*
 run rm -rf include
 run rm -rf share

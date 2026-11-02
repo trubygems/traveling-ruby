@@ -9,10 +9,13 @@
 # gems (json, psych, prism...), mixing two versions of one library.
 #
 # A normal Ruby marks its first built-in load path (sitelibdir) with
-# @gem_prelude_index, and RubyGems inserts gems there. Mark the relocated
-# sitelibdir from RUBYLIB instead, so gems load ahead of the stdlib, as they do
-# on a normal Ruby, while user -I and RUBYLIB entries still come first.
-index = $LOAD_PATH.index(RbConfig::CONFIG["sitelibdir"])
+# @gem_prelude_index, and RubyGems inserts gems there. Mark the first RUBYLIB
+# entry inside this Ruby's lib/ruby instead, so gems load ahead of the stdlib, as
+# they do on a normal Ruby, while user -I and RUBYLIB entries still come first.
+# It is found from this file's location because RbConfig paths are wrong on
+# Windows, where this is prepended to RubyInstaller's operating_system.rb.
+prefix = File.expand_path(__dir__)[%r{\A.*/lib/ruby/}]
+index = prefix && $LOAD_PATH.index { |path| File.expand_path(path).start_with?(prefix) }
 marked = $LOAD_PATH.index { |path| path.instance_variable_defined?(:@gem_prelude_index) }
 if index && (marked.nil? || index < marked)
   path = $LOAD_PATH[index].dup
