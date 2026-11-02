@@ -8,11 +8,17 @@ on:
   release:
     types: [published]
 
+# Commit message keyword filtering (job if: below):
+# - No "(" in the message, "(windows)" or "(windows-x86_64)" → run
+# - Any other keyword, e.g. "(windows-arm64)", "(linux)" → skip
+# arm64 lives in win-arm64.yml.
+
 env:
   PKG_DATE: 20260922
 
 jobs:
   build-windows:
+    if: (!contains((github.event.head_commit.message || ''), '(') || contains((github.event.head_commit.message || ''), '(windows)') || contains((github.event.head_commit.message || ''), '(windows-x86_64)'))
     defaults:
         run:
           shell: bash
@@ -163,6 +169,7 @@ jobs:
 
   test-windows-min:
     needs: build-windows
+    if: (!contains((github.event.head_commit.message || ''), '(') || contains((github.event.head_commit.message || ''), '(windows)') || contains((github.event.head_commit.message || ''), '(windows-x86_64)'))
     strategy:
       matrix:
         arch: [x86_64]
@@ -188,6 +195,7 @@ jobs:
           ARCHITECTURES: ${{ matrix.arch }}
   test-windows-full:
     needs: build-windows
+    if: (!contains((github.event.head_commit.message || ''), '(') || contains((github.event.head_commit.message || ''), '(windows)') || contains((github.event.head_commit.message || ''), '(windows-x86_64)'))
     strategy:
       matrix:
         arch: [x86_64]
