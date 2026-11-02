@@ -1,0 +1,11 @@
+source "https://rubygems.org"
+
+gem "nokogiri", "1.19.4"
+gem "sqlite3", "2.10.2"
+gem "json", "3.1.0"
+gem "rainbow"
+gem "tzinfo-data", platforms: :windows
+
+group :development, :test do
+  gem "minitest"
+end
