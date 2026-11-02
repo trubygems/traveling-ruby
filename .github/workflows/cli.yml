@@ -2,13 +2,38 @@ name: Test cli.sh
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: [ Build ]
+    types: [ completed ]
+    branches: [ main ]
   pull_request:
     paths:
       - cli.sh
       - .github/workflows/cli.yml
 
 jobs:
+  releases:
+    name: check for ruby-* releases
+    runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.check.outputs.published }}
+    steps:
+      - id: check
+        # cli.sh and the action download from ruby-<version>-<revision>-<target>
+        # releases, which only exist once Build has published from main
+        run: |
+          if gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName --jq '.[].tagName' | grep -q '^ruby-'; then
+            echo published=true >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No ruby-* releases published yet; skipping install tests until Build publishes from main"
+            echo published=false >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
   unix:
+    needs: releases
+    if: needs.releases.outputs.published == 'true'
     name: "${{ matrix.os }} ${{ matrix.shell }} ${{ matrix.args || 'latest' }}"
     timeout-minutes: 10
     strategy:
@@ -36,6 +61,8 @@ jobs:
         name: ruby --version via ${{ matrix.shell }}
 
   alpine:
+    needs: releases
+    if: needs.releases.outputs.published == 'true'
     name: "alpine ${{ matrix.args || 'latest' }}"
     timeout-minutes: 10
     strategy:
@@ -53,6 +80,8 @@ jobs:
         name: ruby --version
 
   windows:
+    needs: releases
+    if: needs.releases.outputs.published == 'true'
     name: "${{ matrix.os }} ${{ matrix.args || 'latest' }}"
     timeout-minutes: 10
     strategy:
