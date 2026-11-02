@@ -423,6 +423,9 @@ find . -name '*.dylib'
 	find . -name '*.dylib' | xargs strip -S
 )
 [[ $? == 0 ]]
+# Remove macOS dSYM debug symbol directories - they are not needed at runtime
+# and would bloat the package (~9MB on arm64).
+find . -name '*.dSYM' -exec rm -rf {} + 2>/dev/null || true
 run rm bin/{erb,rdoc,ri}
 run rm -f bin/testrb # Only Ruby 2.1 has it
 run rm -rf include
