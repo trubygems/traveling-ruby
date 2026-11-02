@@ -106,6 +106,7 @@ rubocop-performance
 rubocop-rails
 rubocop-rails-omakase
 repl_type_completor
+solid_cable
 vips
 )
 # /home/linux/output/3.4.7-arm64/lib/ruby/gems/3.4.0/gems/ffi-1.17.2/lib/ffi/dynamic_library.rb:94:in 'FFI::DynamicLibrary.load_library': Could not open library 'vips.so.42': vips.so.42: cannot open shared object file: No such file or directory. (LoadError)
@@ -143,7 +144,7 @@ for LIB in ${GEMS[@]}; do
 		continue
 	fi
 	if ! "$BUILD_OUTPUT_DIR/bin/ruby$EXE_SUFFIX" -r$LIB -e true ; then
-		if [[ "$LIB" == "action_text/trix" || "$LIB" == "rails/railtie" || "$LIB" == "solid_cache" || "$LIB" == "solid_cable" || "$LIB" == "solid_queue" || "$LIB" == "stimulus-rails" || "$LIB" == "turbo-rails" ]]; then
+		if [[ "$LIB" == "action_text/trix" || "$LIB" == "rails/railtie" || "$LIB" == "solid_cache" || "$LIB" == "solid_cable" || "$LIB" == "solid_queue" || "$LIB" == "stimulus-rails" || "$LIB" == "turbo-rails" || "$LIB" == "active_storage" ]]; then
 			echo "Testing $LIB with active_support/all required first"
 			if "$BUILD_OUTPUT_DIR/bin/ruby$EXE_SUFFIX" -rrails -ractive_support -ractive_model -r$LIB -e true ; then
 				success "Gem $LIB OK!"
