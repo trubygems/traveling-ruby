@@ -10,14 +10,14 @@ usage() {
   printf "  -p, --pre-release     Create a pre-release.\n"
   printf "  -u, --upload          Upload pre-built files to an existing pre-release.\n"
   printf "  -d, --dry-run         Do not push tags or create releases.\n"
-  printf "  -r, --repo REPO       Specify the repository to create the release in. Default is pact-foundation/pact-js-core.\n"
+  printf "  -r, --repo REPO       Specify the repository to create the release in. Default is trubygems/traveling-ruby.\n"
   printf "  -t, --tag TAG         Specify the tag name for the release. Default is rel-<date>-<ruby_version>-<git_sha>.\n"
   printf "  -n, --notes NOTES     Specify the release notes. Default is 'Release date: <date>\\nRuby version: <ruby_version>'.\n"
   printf "  -s, --set-release     Set the pre-release to released.\n"
 }
 
 # Default values
-REPO="you54f/traveling-ruby"
+REPO="trubygems/traveling-ruby"
 PKG_DATE=${TRAVELING_RUBY_PKG_DATE:-$(date +%Y%m%d)}
 GIT_SHA=$(git rev-parse HEAD)
 GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)

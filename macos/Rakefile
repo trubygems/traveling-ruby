@@ -28,11 +28,6 @@ task :test do
   # Do nothing
 end
 
-desc "Upload all packages to the server"
-task :upload do
-  # Do nothing
-end
-
 desc "Clean all packages, but not the runtime"
 task :clean do
   sh "rm -rf output"
@@ -80,7 +75,6 @@ ARCHITECTURES.each do |arch|
     task :package_full => "package_full:#{ruby_version}:#{arch}"
     task :build   => "build:#{ruby_version}:#{arch}"
     task :test    => "test:#{ruby_version}:#{arch}"
-    task :upload  => "upload:#{ruby_version}:#{arch}"
     task :clean   => "clean:#{ruby_version}:#{arch}"
 
     desc "Create packages for Ruby #{ruby_version} #{arch}"
@@ -115,13 +109,6 @@ ARCHITECTURES.each do |arch|
     desc "Test Ruby #{ruby_version} #{arch}"
     task "test:#{ruby_version}:#{arch}" => "output/#{ruby_version}-#{arch}/bin" do
       sh "./test-gems.sh output/#{ruby_version}-#{arch}"
-    end
-
-    desc "Upload Ruby #{ruby_version} packages to the server"
-    task "upload:#{ruby_version}:#{arch}" => [package, "#{gem_dir}/ok"] do
-      sh "s3cmd -P sync --no-preserve #{package} s3://traveling-ruby/releases/"
-      sh "s3cmd -P --delete-removed --no-preserve -r sync #{gem_dir}/ s3://traveling-ruby/releases/#{gem_dir}/"
-      sh "s3cmd del s3://traveling-ruby/releases/#{gem_dir}/ok"
     end
 
     desc "Clean Ruby #{ruby_version} packages, but not the runtime"

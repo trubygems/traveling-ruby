@@ -1,0 +1,80 @@
+name: Build Windows via unix
+
+on:
+  workflow_call:
+    inputs:
+      pkg-date:
+        required: true
+        type: string
+      builds:
+        description: 'JSON array of {arch, ruby-version} to build'
+        required: true
+        type: string
+      ruby-versions:
+        description: 'JSON array of Ruby versions to test on x86_64'
+        required: true
+        type: string
+      newest-ruby-version:
+        description: 'Ruby version to test on arm64'
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: windows-via-unix ${{ matrix.arch }} ${{ matrix.ruby-version }}
+    strategy:
+      matrix:
+        include: ${{ fromJSON(inputs.builds) }}
+      fail-fast: false
+    runs-on: macos-latest
+    env:
+      ARCHITECTURES: ${{ matrix.arch }}
+      RUBY_VERSIONS: ${{ matrix.ruby-version }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+
+      - name: Build
+        working-directory: windows
+        run: |
+          brew install 7zip
+          rake
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: via-unix-windows-${{ matrix.arch }}-${{ matrix.ruby-version }}
+          path: windows/traveling-ruby-${{ inputs.pkg-date }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch }}.tar.gz
+
+  test:
+    name: windows-via-unix ${{ matrix.arch }} ${{ matrix.ruby-version }} test
+    needs: build
+    strategy:
+      matrix:
+        arch: [ x86_64 ]
+        ruby-version: ${{ fromJSON(inputs.ruby-versions) }}
+        include:
+          - arch: arm64
+            ruby-version: ${{ inputs.newest-ruby-version }}
+      fail-fast: false
+    runs-on: ${{ matrix.arch == 'arm64' && 'windows-11-arm' || 'windows-latest' }}
+    env:
+      ARCHITECTURES: ${{ matrix.arch }}
+      RUBY_VERSIONS: ${{ matrix.ruby-version }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: via-unix-windows-${{ matrix.arch }}-${{ matrix.ruby-version }}
+          path: windows/
+
+      - name: Test
+        shell: bash
+        working-directory: windows
+        run: |
+          mkdir output
+          tar xzf "traveling-ruby-${{ inputs.pkg-date }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch }}.tar.gz" -C output
+          ../shared/test-gems.sh -p windows -a "$ARCHITECTURES" output

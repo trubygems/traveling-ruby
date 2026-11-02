@@ -1,0 +1,57 @@
+name: Build Linux
+
+on:
+  workflow_call:
+    inputs:
+      platform:
+        description: 'linux or linux-musl'
+        required: true
+        type: string
+      arch:
+        required: true
+        type: string
+      pkg-date:
+        required: true
+        type: string
+      ruby-versions:
+        description: 'JSON array of Ruby versions'
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: ${{ inputs.platform }} ${{ inputs.arch }} ${{ matrix.ruby-version }}
+    strategy:
+      matrix:
+        ruby-version: ${{ fromJSON(inputs.ruby-versions) }}
+      fail-fast: false
+    runs-on: ${{ inputs.arch == 'arm64' && 'ubuntu-22.04-arm' || 'ubuntu-latest' }}
+    env:
+      ARCHITECTURES: ${{ inputs.arch }}
+      RUBY_VERSIONS: ${{ matrix.ruby-version }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+
+      - name: Build
+        working-directory: ${{ inputs.platform }}
+        run: |
+          rake
+          rake package_full
+
+      - name: Package gems
+        run: ./scripts/package-gems.sh
+        env:
+          PLATFORM: ${{ inputs.platform }}
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: pkg-${{ inputs.platform }}-${{ inputs.arch }}-${{ matrix.ruby-version }}
+          path: ${{ inputs.platform }}/traveling-ruby*.tar.gz
+
+      - name: Test
+        working-directory: ${{ inputs.platform }}
+        run: rake test_docker

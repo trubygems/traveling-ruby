@@ -5,11 +5,6 @@ RUBY_VERSIONS = ENV['RUBY_VERSIONS'] ? [].push(ENV['RUBY_VERSIONS']) : File.read
 ARCHITECTURES = ENV['ARCHITECTURES'] ? [].push(ENV['ARCHITECTURES']) : ["x86_64","arm64"]
 CONCURRENCY   = `./internal/cpucount.sh`.to_i
 
-# if RUBY_VERSIONS.any? { |version| Gem::Version.new(version) < Gem::Version.new('3.1.0') }
-#   ENV['OPENSSL_1_1_LEGACY'] = 'true'
-#   puts "OpenSSL 1.1.1 legacy mode enabled"
-# end
-# IMAGE_VERSION += "-openssl1.1.1" if ENV['OPENSSL_1_1_LEGACY']
 desc "Build all packages"
 
 task :default => :package
@@ -39,27 +34,17 @@ task :test_docker do
   # Do nothing
 end
 
-desc "Upload all packages to the server"
-task :upload do
-  # Do nothing
-end
-
 desc "Clean all packages"
 task :clean do
   sh "rm -rf output"
 end
 
 ARCHITECTURES.each do |arch|
-  # if RUBY_VERSIONS.any? { |version| Gem::Version.new(version) < Gem::Version.new('3.1.0') }
-  #   ENV['OPENSSL_1_1_LEGACY'] = 'true'
-  #   puts "OpenSSL 1.1.1 legacy mode enabled"
-  # end
   task :image => "image:#{arch}"
   
   desc "Build the #{arch} Docker image"
   task "image:#{arch}" do
     IMAGE_FILE = "image/Dockerfile-#{arch}"
-    # IMAGE_FILE += "-openssl1.1.1" if ENV['OPENSSL_1_1_LEGACY']
     puts "Building Docker image for #{arch} from #{IMAGE_FILE}"
     sh "docker build --pull" \
       " -t you54f/traveling-ruby-builder-#{arch}:#{IMAGE_VERSION}" \
@@ -90,7 +75,6 @@ ARCHITECTURES.each do |arch|
     task :build   => "build:#{ruby_version}:#{arch}"
     task :test    => "test:#{ruby_version}:#{arch}"
     task :test_docker    => "test_docker:#{ruby_version}:#{arch}"
-    task :upload  => "upload:#{ruby_version}:#{arch}"
     task :clean   => "clean:#{ruby_version}:#{arch}"
 
     desc "Create packages for Ruby #{ruby_version} #{arch}"
@@ -134,11 +118,6 @@ ARCHITECTURES.each do |arch|
     desc "Test via Docker Ruby #{ruby_version} #{arch}"
     task "test_docker:#{ruby_version}:#{arch}" => "output/#{ruby_version}-#{arch}/bin" do
       sh "./test-gems-docker.sh output/#{ruby_version}-#{arch}"
-    end
-
-    desc "Upload Ruby #{ruby_version} #{arch} packages to the server"
-    task "upload:#{ruby_version}:#{arch}" => [package, "#{gem_dir}/ok"] do
-      sh "env IMAGE_VERSION=#{IMAGE_VERSION} ./upload #{package} #{gem_dir}"
     end
 
     desc "Clean Ruby #{ruby_version} packages"

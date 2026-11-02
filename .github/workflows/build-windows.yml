@@ -1,0 +1,131 @@
+name: Build Windows
+
+on:
+  workflow_call:
+    inputs:
+      arch:
+        description: 'x86_64 or arm64'
+        required: true
+        type: string
+      pkg-date:
+        required: true
+        type: string
+      ruby-versions:
+        description: 'JSON array of Ruby versions'
+        required: true
+        type: string
+      newest-ruby-version:
+        description: 'Ruby version whose -full package is tested'
+        required: true
+        type: string
+
+env:
+  ARCHITECTURES: ${{ inputs.arch }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: windows ${{ inputs.arch }} ${{ matrix.ruby-version }}
+    strategy:
+      matrix:
+        ruby-version: ${{ fromJSON(inputs.ruby-versions) }}
+      fail-fast: false
+    runs-on: ${{ inputs.arch == 'arm64' && 'windows-11-arm' || 'windows-latest' }}
+    env:
+      RUBY_VERSIONS: ${{ matrix.ruby-version }}
+      PKG: traveling-ruby-${{ inputs.pkg-date }}-${{ matrix.ruby-version }}-windows-${{ inputs.arch }}
+      GEMS: traveling-ruby-gems-${{ inputs.pkg-date }}-${{ matrix.ruby-version }}-windows-${{ inputs.arch }}
+      OUTPUT: output/${{ matrix.ruby-version }}/${{ inputs.arch }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Cache vendor gems
+        uses: actions/cache@v4
+        with:
+          path: windows/cache/vendor
+          key: windows-vendor-cache-${{ inputs.pkg-date }}-${{ matrix.ruby-version }}-${{ inputs.arch }}-${{ hashFiles(format('shared/gemfiles/{0}/Gemfile*', inputs.pkg-date)) }}
+
+      - name: Cache RubyInstaller archives
+        uses: actions/cache@v4
+        with:
+          path: windows/cache/*.7z
+          key: windows-rubyinstaller-cache-${{ inputs.pkg-date }}-${{ matrix.ruby-version }}-${{ inputs.arch }}
+
+      - uses: ruby/setup-ruby-pkgs@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          mingw: icu 7zip gcc pkg-config sqlite3 libxml2 libxslt libiconv libmariadbclient libpqxx xz ${{ inputs.arch == 'arm64' && 'clang' || 'gcc-libs gcc' }}
+
+      # The Ruby that build-ruby.sh extracts only finds MSYS2 in a few fixed
+      # places (c:/msys64, next to itself, ...). windows-2025 images have no
+      # C:\msys64, so point it at the MSYS2 setup-ruby-pkgs installed into.
+      - name: Expose MSYS2 location
+        run: |
+          msys2=$(ruby -e 'require "ruby_installer/runtime"; puts RubyInstaller::Runtime.msys2_installation.msys_path')
+          echo "MSYS2_PATH=$msys2" | tee -a "$GITHUB_ENV"
+
+      - name: Build
+        working-directory: windows
+        run: |
+          mkdir -p cache "$OUTPUT"
+          ./build-ruby.sh -a "$ARCHITECTURES" -r "$RUBY_VERSIONS" cache "$OUTPUT"
+        env:
+          # Maps clang's aarch64-w64-windows-gnu target to aarch64-w64-mingw32
+          # so config.sub/libtool accept it (flavorjones/mini_portile#161).
+          MINI_PORTILE_REPO: ${{ inputs.arch == 'arm64' && 'https://github.com/YOU54F/mini_portile' || '' }}
+          MINI_PORTILE_REF: ${{ inputs.arch == 'arm64' && 'fix/llvm-windows-gnu-target' || '' }}
+
+      - name: Package
+        working-directory: windows
+        run: |
+          ./package.sh -r "$PKG.tar.gz" "$OUTPUT"
+          ./package.sh -E "$GEMS" "$OUTPUT"
+          touch "$GEMS/ok"
+          ./package.sh -f -r "$PKG-full.tar.gz" "$OUTPUT"
+
+      - name: Test gems
+        working-directory: windows
+        run: ../shared/test-gems.sh -p windows -a "$ARCHITECTURES" "$OUTPUT"
+
+      - name: Package gems
+        run: ./scripts/package-gems.sh
+        env:
+          PLATFORM: windows
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: pkg-windows-${{ inputs.arch }}-${{ matrix.ruby-version }}
+          path: windows/traveling-ruby*.tar.gz
+
+  # Tests the packages on a clean runner, without the build toolchain
+  test:
+    name: windows ${{ inputs.arch }} ${{ matrix.ruby-version }} ${{ matrix.package }} test
+    needs: build
+    strategy:
+      matrix:
+        ruby-version: ${{ fromJSON(inputs.ruby-versions) }}
+        package: [ minimal ]
+        include:
+          - ruby-version: ${{ inputs.newest-ruby-version }}
+            package: full
+      fail-fast: false
+    runs-on: ${{ inputs.arch == 'arm64' && 'windows-11-arm' || 'windows-latest' }}
+    env:
+      RUBY_VERSIONS: ${{ matrix.ruby-version }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: pkg-windows-${{ inputs.arch }}-${{ matrix.ruby-version }}
+          path: windows/
+
+      - name: Test
+        working-directory: windows
+        run: |
+          mkdir output
+          tar xzf "traveling-ruby-${{ inputs.pkg-date }}-${{ matrix.ruby-version }}-windows-${{ inputs.arch }}${{ matrix.package == 'full' && '-full' || '' }}.tar.gz" -C output
+          ../shared/test-gems.sh -p windows -a "$ARCHITECTURES" output

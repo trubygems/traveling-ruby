@@ -1,27 +1,45 @@
-# Traveling Ruby: self-contained, portable Ruby binaries
+# Traveling Ruby
 
-![](https://openclipart.org/image/300px/svg_to_png/181225/Travel_backpacks.png)
+Self-contained, portable Ruby binaries for Linux (glibc and musl), macOS and Windows, on x86_64 and arm64.
 
-Traveling Ruby is a project which supplies self-contained, "portable" Ruby binaries: Ruby binaries that can run on any Linux disto, MacOS or Windows. 
+Bundle one with your Ruby app and ship a single package that runs without your users installing Ruby or any gems. A packaged app runs only the Ruby it ships with and never loads the user's own Ruby, gems or `RUBYLIB`.
 
-This allows Ruby app developers to bundle these binaries with their Ruby app, so that they can distribute a single package to end users, without needing end users to first install Ruby or gems.
+## Platforms
 
-Supports Linux (glib & musl), MacOS & Windows, in both x64 & arm64 flavours.
+The current release, [rel-20261102](https://github.com/trubygems/traveling-ruby/releases/tag/rel-20261102), builds Ruby 3.3.13, 3.4.12 and 4.0.9.
 
-Flavours of Ruby have been provided from Ruby 2.6.10 to the current.
+| Platform | Package name | Architectures | Runs on |
+| --- | --- | --- | --- |
+| Linux (glibc) | `linux` | x86_64, arm64 | glibc 2.17 or later (CentOS 7, Ubuntu 14.04, Debian 8 and newer) |
+| Linux (musl) | `linux-musl` | x86_64, arm64 | musl 1.2.2 or later (Alpine 3.15 and newer) |
+| macOS | `macos` | x86_64, arm64 | macOS 12.2 or later |
+| Windows | `windows` | x86_64, arm64 | Windows 10 or later; arm64 needs Windows 11 and Ruby 3.4 or later |
 
-Recent CI builds, will generate the latest non-eol versions of Ruby, but the system is setup to still be able to create older versions.
+Release assets are named `traveling-ruby-<release>-<ruby>-<platform>-<arch>.tar.gz`. The `-full` packages also contain the prebuilt native extension gems, which are published one gem per tarball as well. Every release has a `SHA256SUMS` file and a build provenance attestation.
 
-## Building binaries
+## Quickstart
 
-The Traveling Ruby project supplies binaries that application developers can use. These binaries are built using the build systems in this repository. As an application developer, you do not have to use the build system. You only have to use the build systems when contributing to Traveling Ruby, when trying to reproduce our binaries, or when you want to customize the binaries.
+```bash
+curl -fsSL https://raw.githubusercontent.com/trubygems/traveling-ruby/main/cli.sh | sh
+~/.travelling-ruby/bin/ruby --version
+```
 
-For the Linux build system, see [linux/README.md](linux/README.md).
+On GitHub Actions:
 
-For the macOS build system, see [macos/README.md](macos/README.md).
+```yml
+- uses: trubygems/traveling-ruby@main
+- run: ruby --version
+```
+
+## Documentation
+
+- [Using the packages](docs/USING.md): downloading and verifying packages, the installer, the GitHub Action and the bundled gems.
+- [Tutorial: packaging an app](docs/TUTORIAL.md): walks through the [examples repo](https://github.com/trubygems/traveling-ruby-examples), from a hello world script to a Rails app.
+- [Reducing package size](docs/REDUCING_PACKAGE_SIZE.md)
+- [Building and releasing](docs/BUILDING.md): building packages yourself, CI and cutting a release.
 
 ## History
 
-This project was forked from https://github.com/phusion/traveling-ruby, due to lack of maintainence, and our neccessity for use in the [Pact](docs.pact.io) project for end-users. We have now built replacement tooling in Rust, but look to preserve traveling-ruby for as long as possible, in a highly automated fashion.
+This project is a fork of [phusion/traveling-ruby](https://github.com/phusion/traveling-ruby), which is no longer maintained. We maintain it for the [Pact](https://docs.pact.io) project, whose users run Ruby tools without installing Ruby. Pact now has replacement tooling in Rust, but we keep Traveling Ruby going, as automated as we can make it.
 
-We, from the Pact team, thank Phusion and Hong Li for their work, and I am sure I can be safe in extending my gratitude to the many Ruby developers who were able to share their applications with the world, thanks to yours, and others hard work.
+Thanks to Phusion and Hongli Lai for their work, and on behalf of the many Ruby developers who have shipped their apps with it.

@@ -1,0 +1,102 @@
+name: macOS runtime
+
+# Builds the macOS runtime (the libraries the gems link against) once and stores
+# it in the container registry, tagged by scripts/macos-runtime.sh with a hash
+# of the scripts that build it. Every macOS build pulls it from there, so
+# branches, pull requests and releases share one build until those scripts or
+# the major Xcode version change.
+#
+# Pull requests from forks can't push to the registry, so they get the runtime
+# as a workflow artifact instead.
+
+on:
+  workflow_call:
+    inputs:
+      arch:
+        required: true
+        type: string
+      rebuild:
+        description: 'Rebuild and push the runtime even if the registry has it'
+        required: false
+        default: false
+        type: boolean
+    outputs:
+      source:
+        description: 'Where the build jobs get the runtime: registry or artifact'
+        value: ${{ jobs.runtime.outputs.source }}
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: 'Architectures to build'
+        required: true
+        default: all
+        type: choice
+        options: [ all, x86_64, arm64 ]
+      rebuild:
+        description: 'Rebuild and push the runtime even if the registry has it'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  RUNTIME_REPO: ${{ vars.MACOS_RUNTIME_REPO || format('ghcr.io/{0}-runtime', github.repository) }}
+
+jobs:
+  runtime:
+    name: macos ${{ matrix.arch }} runtime
+    strategy:
+      matrix:
+        arch: ${{ inputs.arch == 'all' && fromJSON('["x86_64", "arm64"]') || fromJSON(format('["{0}"]', inputs.arch)) }}
+      fail-fast: false
+    runs-on: ${{ matrix.arch == 'arm64' && 'macos-15' || 'macos-15-intel' }}
+    env:
+      ARCHITECTURES: ${{ matrix.arch }}
+      CAN_PUSH: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    outputs:
+      source: ${{ steps.result.outputs.source }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oras-project/setup-oras@v1
+
+      - name: Log in to the registry
+        run: echo "${{ github.token }}" | oras login "${RUNTIME_REPO%%/*}" -u "${{ github.actor }}" --password-stdin
+
+      - name: Look up runtime
+        id: lookup
+        run: |
+          echo "Runtime: $RUNTIME_REPO:$(./scripts/macos-runtime.sh tag)"
+          if [ "${{ inputs.rebuild }}" != "true" ] && ./scripts/macos-runtime.sh exists; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build runtime
+        if: steps.lookup.outputs.found != 'true'
+        working-directory: macos
+        run: |
+          rake stash_conflicting_paths
+          rake runtime
+          rake unstash_conflicting_paths
+
+      - name: Push runtime
+        if: steps.lookup.outputs.found != 'true' && env.CAN_PUSH == 'true'
+        run: ./scripts/macos-runtime.sh push
+
+      - name: Pack runtime
+        if: steps.lookup.outputs.found != 'true' && env.CAN_PUSH != 'true'
+        run: tar -C macos -czf runtime.tar.gz --exclude 'runtime/ccache/*' --exclude 'runtime/ruby-*.tar.gz' runtime
+
+      - uses: actions/upload-artifact@v5
+        if: steps.lookup.outputs.found != 'true' && env.CAN_PUSH != 'true'
+        with:
+          name: runtime-macos-${{ matrix.arch }}
+          path: runtime.tar.gz
+          retention-days: 1
+
+      - name: Result
+        id: result
+        run: echo "source=${{ (steps.lookup.outputs.found == 'true' || env.CAN_PUSH == 'true') && 'registry' || 'artifact' }}" >> "$GITHUB_OUTPUT"

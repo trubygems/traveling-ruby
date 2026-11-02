@@ -1,0 +1,172 @@
+name: Build
+
+# Builds every platform on pushes to main and on releases. Pull requests build
+# every platform too, unless they carry "build:<platform>" labels, which limit
+# the build to those platforms. Run it by hand to build chosen platforms.
+#
+# The release date and Ruby versions come from versions/*.txt. A release must be
+# tagged rel-<versions/VERSION.txt>; its packages are published with a
+# SHA256SUMS file and build provenance attestations once every platform passes.
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore: [ '**.md', 'docs/**', 'doc/**' ]
+  pull_request:
+    branches: [ main ]
+    types: [ opened, synchronize, reopened, labeled ]
+    paths-ignore: [ '**.md', 'docs/**', 'doc/**' ]
+  release:
+    types: [ published ]
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: 'Platforms to build: all, or any of linux linux-musl macos windows windows-via-unix'
+        required: false
+        default: all
+        type: string
+      rebuild_runtime:
+        description: 'Rebuild the macOS runtime even if the registry has it'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      pkg-date: ${{ steps.setup.outputs.pkg-date }}
+      ruby-versions: ${{ steps.setup.outputs.ruby-versions }}
+      ruby-versions-arm64: ${{ steps.setup.outputs.ruby-versions-arm64 }}
+      windows-via-unix-builds: ${{ steps.setup.outputs.windows-via-unix-builds }}
+      newest-ruby-version: ${{ steps.setup.outputs.newest-ruby-version }}
+      linux: ${{ steps.setup.outputs.linux }}
+      linux-musl: ${{ steps.setup.outputs.linux-musl }}
+      macos: ${{ steps.setup.outputs.macos }}
+      windows: ${{ steps.setup.outputs.windows }}
+      windows-via-unix: ${{ steps.setup.outputs.windows-via-unix }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: setup
+        run: ./scripts/ci-setup.sh && cat "$GITHUB_OUTPUT"
+        env:
+          EVENT: ${{ github.event_name }}
+          TAG: ${{ github.event.release.tag_name }}
+          PLATFORMS: ${{ inputs.platforms }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+
+  linux:
+    needs: setup
+    if: needs.setup.outputs.linux == 'true'
+    strategy:
+      matrix:
+        arch: [ x86_64, arm64 ]
+      fail-fast: false
+    uses: ./.github/workflows/build-linux.yml
+    with:
+      platform: linux
+      arch: ${{ matrix.arch }}
+      pkg-date: ${{ needs.setup.outputs.pkg-date }}
+      ruby-versions: ${{ needs.setup.outputs.ruby-versions }}
+
+  linux-musl:
+    needs: setup
+    if: needs.setup.outputs.linux-musl == 'true'
+    strategy:
+      matrix:
+        arch: [ x86_64, arm64 ]
+      fail-fast: false
+    uses: ./.github/workflows/build-linux.yml
+    with:
+      platform: linux-musl
+      arch: ${{ matrix.arch }}
+      pkg-date: ${{ needs.setup.outputs.pkg-date }}
+      ruby-versions: ${{ needs.setup.outputs.ruby-versions }}
+
+  macos:
+    needs: setup
+    if: needs.setup.outputs.macos == 'true'
+    strategy:
+      matrix:
+        arch: [ x86_64, arm64 ]
+      fail-fast: false
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/build-macos.yml
+    with:
+      arch: ${{ matrix.arch }}
+      pkg-date: ${{ needs.setup.outputs.pkg-date }}
+      ruby-versions: ${{ needs.setup.outputs.ruby-versions }}
+      rebuild-runtime: ${{ inputs.rebuild_runtime == true }}
+
+  windows:
+    needs: setup
+    if: needs.setup.outputs.windows == 'true'
+    strategy:
+      matrix:
+        arch: [ x86_64, arm64 ]
+      fail-fast: false
+    uses: ./.github/workflows/build-windows.yml
+    with:
+      arch: ${{ matrix.arch }}
+      pkg-date: ${{ needs.setup.outputs.pkg-date }}
+      # RubyInstaller ships arm64 builds from Ruby 3.4
+      ruby-versions: ${{ matrix.arch == 'arm64' && needs.setup.outputs.ruby-versions-arm64 || needs.setup.outputs.ruby-versions }}
+      newest-ruby-version: ${{ needs.setup.outputs.newest-ruby-version }}
+
+  # Cross-builds the Windows packages on macOS. These lack the DLLs that the
+  # native extensions need, so they are tested but never released.
+  windows-via-unix:
+    needs: setup
+    if: needs.setup.outputs.windows-via-unix == 'true'
+    uses: ./.github/workflows/build-windows-via-unix.yml
+    with:
+      pkg-date: ${{ needs.setup.outputs.pkg-date }}
+      builds: ${{ needs.setup.outputs.windows-via-unix-builds }}
+      ruby-versions: ${{ needs.setup.outputs.ruby-versions }}
+      newest-ruby-version: ${{ needs.setup.outputs.newest-ruby-version }}
+
+  publish:
+    needs: [ setup, linux, linux-musl, macos, windows ]
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: pkg-*
+          merge-multiple: true
+          path: dist
+
+      - name: Write checksums
+        working-directory: dist
+        run: |
+          sha256sum traveling-ruby*.tar.gz > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-checksums: dist/SHA256SUMS
+
+      - name: Publish archives and checksums
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          name: 'Release ${{ github.event.release.tag_name }}'
+          generate_release_notes: true
+          body: ${{ github.event.release.body }}
+          files: |
+            dist/traveling-ruby*.tar.gz
+            dist/SHA256SUMS

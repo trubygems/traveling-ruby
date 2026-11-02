@@ -4,9 +4,9 @@ RUN apt-get update && \
       apt-get install -y curl && \
       apt-get clean && rm -rf /var/lib/apt/lists
 
-ARG TRAVELING_RUBY_VERSION=2.6.10
-ARG TRAVELING_RUBY_PKG_DATE=20240215
-ARG TRAVELING_RUBY_GH_SOURCE=YOU54F/traveling-ruby 
+ARG TRAVELING_RUBY_VERSION=3.4.7
+ARG TRAVELING_RUBY_PKG_DATE=20251122
+ARG TRAVELING_RUBY_GH_SOURCE=trubygems/traveling-ruby
 
 ENV PATH="/home/.traveling-ruby/bin:$PATH"
 

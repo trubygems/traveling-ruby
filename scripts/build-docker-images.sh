@@ -1,11 +1,11 @@
 #!/bin/sh
 
-# ./scripts/build-docker-images.sh -m -p -v 3.3.0
+# ./scripts/build-docker-images.sh -m -p -v 3.4.7
 
 # Define the default values for the arguments
-DEFAULT_TRAVELING_RUBY_VERSION=2.6.10
-DEFAULT_TRAVELING_RUBY_PKG_DATE=20240215
-DEFAULT_TRAVELING_RUBY_GH_SOURCE=YOU54F/traveling-ruby
+DEFAULT_TRAVELING_RUBY_VERSION=3.4.7
+DEFAULT_TRAVELING_RUBY_PKG_DATE=20251122
+DEFAULT_TRAVELING_RUBY_GH_SOURCE=trubygems/traveling-ruby
 DOCKER_IMAGE_ORG_AND_NAME="you54f/traveling-ruby"
 
 # Define the usage function
