@@ -2,7 +2,7 @@ name: Windows
 on:
   workflow_dispatch:
   push:
-    branches: [ main, test/win-ext-arm ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
   release:
@@ -17,16 +17,11 @@ jobs:
         run:
           shell: bash
           # shell: msys2 {0}
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     strategy:
       matrix:
         arch: [x86_64]
         ruby-version: [3.3.13, 3.4.12, 4.0.7]
-        os: [windows-latest]
-        # include:
-        #   - os: windows-11-arm
-        #     arch: arm64
-        #     ruby-version: 3.4.7
       fail-fast: false
     steps:
       # - uses: msys2/setup-msys2@v2
@@ -72,6 +67,13 @@ jobs:
           # mingw:             ccache cmake pkg-config libtool openssl ncurses gmp libffi libyaml sqlite xz libmariadbclient libpqxx icu libssh2 libxml2 libxslt clang cc autotools doxygen graphviz gcc-libs gdbm libyaml libffi pdcurses openssl gmp tk
           ruby-version: ${{ matrix.ruby-version }}
           # bundler-cache: true
+      # The Ruby that build-ruby.sh extracts only finds MSYS2 in a few fixed
+      # places (c:/msys64, next to itself, ...). windows-2025 images have no
+      # C:\msys64, so point it at the MSYS2 setup-ruby-pkgs installed into.
+      - name: Expose MSYS2 location
+        run: |
+          msys2=$(ruby -e 'require "ruby_installer/runtime"; puts RubyInstaller::Runtime.msys2_installation.msys_path')
+          echo "MSYS2_PATH=$msys2" | tee -a "$GITHUB_ENV"
       # - name: build ruby ${{ matrix.ruby-version }} ${{ matrix.arch }}
       #   # shell: msys2 {0}
       #   if: matrix.arch == 'arm64'
@@ -165,13 +167,8 @@ jobs:
       matrix:
         arch: [x86_64]
         ruby-version: [3.3.13, 3.4.12, 4.0.7]
-        os: [windows-latest]
-        # include:
-        #   - os: windows-11-arm
-        #     arch: arm64
-        #     ruby-version: 3.4.7
       fail-fast: false
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
       - name: "Download Artifact"
@@ -195,13 +192,8 @@ jobs:
       matrix:
         arch: [x86_64]
         ruby-version: [4.0.7]
-        os: [windows-latest]
-        # include:
-        #   - os: windows-11-arm
-        #     arch: arm64
-        #     ruby-version: 3.4.7
       fail-fast: false
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
       - name: "Download Artifact"

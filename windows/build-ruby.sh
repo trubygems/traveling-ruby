@@ -187,6 +187,8 @@ fi
 header "Analyzing Ruby..."
 if [[ "$OS" =~ Windows ]]; then
 	export PATH="$OUTPUT_DIR/bin:$PATH"
+	echo "+ MSYS2 for gem builds: $(ruby -e 'require "ruby_installer/runtime"; puts RubyInstaller::Runtime.msys2_installation.msys_path' 2>&1)"
+	echo "+ $(command -v make sh rm dlltool gcc | tr '\n' ' ')"
 else
 	chmod +x $OUTPUT_DIR/bin/gem
 fi
