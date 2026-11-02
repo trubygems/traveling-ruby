@@ -787,6 +787,10 @@ elif [[ ! -d "$TEMP_CMAKE_DIR" ]] || $FORCE_CMAKE_COMPAT; then
 		echo "Entering $RUNTIME_DIR/cmake-3.5.2"
 		pushd cmake-3.5.2 >/dev/null
 
+		# CMake 3.5.2 predates modern libc++: its FragmentCompare::operator()
+		# is used as a std::set comparator and must be const.
+		run sed -i '' 's/bool operator()(std::string const\& l, std::string const\& r)/bool operator()(std::string const\& l, std::string const\& r) const/' Source/CTest/cmCTestBuildHandler.cxx
+
 		# Install to temporary directory to avoid overriding existing cmake
 		run ./configure --prefix="$TEMP_CMAKE_DIR" --no-qt-gui --parallel=$CONCURRENCY
 		run make -j$CONCURRENCY

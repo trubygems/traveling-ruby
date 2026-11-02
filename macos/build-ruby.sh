@@ -337,7 +337,7 @@ GEM_EXTENSION_API_VERSION=`"$TMPBUILDROOT/bin/ruby" -e 'puts Gem.extension_api_v
 run mkdir info
 echo "Dumping information about the Ruby binaries into $TMPBUILDROOT/info"
 echo $RUBY_COMPAT_VERSION > info/RUBY_COMPAT_VERSION
-echo $RUBYARCH > info/RUBY_ARCH
+echo $RUBY_ARCH > info/RUBY_ARCH
 echo $GEM_PLATFORM > info/GEM_PLATFORM
 echo $GEM_EXTENSION_API_VERSION > info/GEM_EXTENSION_API_VERSION
 echo "RUBY_COMPAT_VERSION is $RUBY_COMPAT_VERSION"
