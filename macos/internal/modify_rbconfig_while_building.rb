@@ -11,4 +11,16 @@ require 'rbconfig'
   ldflags << "-L/usr/lib"
 
   config["LDFLAGS"] = ldflags.join(" ")
+
+  # Apple clang on macOS does not recognise -diag-disable=... (a flag from
+  # Ruby's default CFLAGS). With -Werror this becomes a fatal error when
+  # compiling native extensions (e.g. curses). Suppress unused-command-line
+  # argument warnings so the flag is silently ignored.
+  %w[CFLAGS CXXFLAGS].each do |key|
+    next unless config.key?(key)
+    flags = config[key].split(/ +/)
+    flags.reject! { |x| x.start_with?('-diag-disable=') }
+    flags << '-Wno-unused-command-line-argument' unless flags.include?('-Wno-unused-command-line-argument')
+    config[key] = flags.join(' ')
+  end
 end

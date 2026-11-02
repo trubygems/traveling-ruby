@@ -1,0 +1,225 @@
+name: Windows arm64
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [published]
+
+# Commit message keyword filtering (job if: below):
+# - No "(" in the message, "(windows)" or "(windows-arm64)" → run
+# - Any other keyword, e.g. "(windows-x86_64)", "(linux)" → skip
+# RubyInstaller only ships arm64 builds for Ruby 3.4+.
+
+env:
+  PKG_DATE: 20261102
+
+jobs:
+  build-windows:
+    if: (!contains((github.event.head_commit.message || ''), '(') || contains((github.event.head_commit.message || ''), '(windows)') || contains((github.event.head_commit.message || ''), '(windows-arm64)'))
+    defaults:
+        run:
+          shell: bash
+          # shell: msys2 {0}
+    runs-on: windows-11-arm
+    strategy:
+      matrix:
+        arch: [arm64]
+        ruby-version: [3.4.12, 4.0.9]
+      fail-fast: false
+    steps:
+      # - uses: msys2/setup-msys2@v2
+      #   # if: matrix.arch == 'arm64'
+      #   with:
+      #     msystem: CLANGARM64
+      #     path-type: inherit
+      #     update: true
+      #     release: true
+      #     install: >
+      #       autotools
+      #       mingw-w64-clang-aarch64-clang
+          # pacboy: icu:p 7zip:p gcc:p pkg-config:p sqlite3:p libxml2:p libxslt:p libiconv:p libmariadbclient:p libpqxx:p xz:p gcc-libs:p
+          # pacboy: icu:p 7zip:p gcc:p pkg-config:p sqlite3:p libxml2:p libxslt:p libiconv:p libmariadbclient:p libpqxx:p xz:p gcc-libs:p
+          # pacboy: icu:p 7zip:p ccache:p cmake:p libtool:p openssl:p ncurses:p gmp:p libffi:p libyaml:p sqlite:p xz:p libmariadbclient:p libpqxx:p libssh2:p libxml2:p libxslt:p clang:p cc:p autotools:p doxygen:p graphviz:p gcc-libs:p gdbm:p libyaml:p libffi:p pdcurses:p openssl:p gmp:p tk:p
+          
+      - uses: actions/checkout@v5
+      - name: Cache vendor gems
+        id: cache-vendor
+        uses: actions/cache@v4
+        with:
+            path: windows/cache/vendor
+            key: windows-vendor-cache-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-${{ matrix.arch }}-${{ hashFiles(format('shared/gemfiles/{0}/Gemfile*', env.PKG_DATE)) }}
+            # restore-keys: |
+            #   windows-vendor-cache-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-${{ matrix.arch }}-windows-vendor-cache-${{ env.PKG_DATE }}-
+
+      - name: Cache RubyInstaller archives
+        id: cache-rubyinstaller
+        uses: actions/cache@v4
+        with:
+          path: windows/cache/*.7z
+          key: windows-rubyinstaller-cache-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-${{ matrix.arch }}
+          # restore-keys: |
+          #   windows-rubyinstaller-cache-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-${{ matrix.arch }}
+
+      - uses: ruby/setup-ruby-pkgs@v1
+        # if: matrix.arch != 'arm64'
+        with:
+          # working-directory: shared/gemfiles/${{ env.PKG_DATE }}
+          # msys2: icu-devel
+          mingw:             icu 7zip gcc pkg-config sqlite3 libxml2 libxslt libiconv libmariadbclient libpqxx xz clang
+          # mingw:             ccache cmake libtool openssl ncurses gmp libffi libyaml sqlite xz libmariadbclient libpqxx icu libssh2 libxml2 libxslt clang cc autotools doxygen graphviz gcc-libs gdbm libyaml libffi pdcurses openssl gmp tk
+          # mingw:             ccache cmake pkg-config libtool openssl ncurses gmp libffi libyaml sqlite xz libmariadbclient libpqxx icu libssh2 libxml2 libxslt clang cc autotools doxygen graphviz gcc-libs gdbm libyaml libffi pdcurses openssl gmp tk
+          ruby-version: ${{ matrix.ruby-version }}
+          # bundler-cache: true
+      # The Ruby that build-ruby.sh extracts only finds MSYS2 in a few fixed
+      # places (c:/msys64, next to itself, ...). windows-2025 images have no
+      # C:\msys64, so point it at the MSYS2 setup-ruby-pkgs installed into.
+      - name: Expose MSYS2 location
+        run: |
+          msys2=$(ruby -e 'require "ruby_installer/runtime"; puts RubyInstaller::Runtime.msys2_installation.msys_path')
+          echo "MSYS2_PATH=$msys2" | tee -a "$GITHUB_ENV"
+      # - name: build ruby ${{ matrix.ruby-version }} ${{ matrix.arch }}
+      #   # shell: msys2 {0}
+      #   if: matrix.arch == 'arm64'
+      #   working-directory: windows
+      #   run: |
+      #       set MSYSTEM=CLANGARM64
+      #       ridk install 2 3
+      #       ridk enable
+      #       uname -m
+      #       ridk exec sh -c "mkdir -p cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}"
+      #       ridk exec sh -c "./build-ruby.sh -a ${{ matrix.arch }} -r ${{ matrix.ruby-version }} cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}"
+      #   env:
+      #     RUBY_VERSIONS: ${{ matrix.ruby-version }}
+      #     ARCHITECTURES: ${{ matrix.arch }}
+      # - name: Setup MSYS2 (CLANGARM64)
+      #   uses: msys2/setup-msys2@v2
+      #   with:
+      #     msystem: CLANGARM64
+      #     update: true
+      #     release: true
+      #     install: >
+      #       autotools
+      #       mingw-w64-clang-aarch64-clang
+      #       ruby
+      # - name: Setup RubyInstaller MSYS2 toolchain (arm64)
+      #   if: matrix.arch == 'arm64'
+      #   working-directory: windows
+      #   run: |
+      #     # Enable MSYS2 environment
+      #     mkdir -p cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
+      #     EXTRACT_ONLY=1 ./build-ruby.sh -a ${{ matrix.arch }} -r ${{ matrix.ruby-version }} cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
+      #     ./output/${{ matrix.ruby-version }}/${{ matrix.arch }}/bin/ridk.cmd enable
+      #     # Update MSYS2 and install required build tools
+      #     ./output/${{ matrix.ruby-version }}/${{ matrix.arch }}/bin/ridk.cmd exec sh -c "pacman -Syu --noconfirm"
+      #     ./output/${{ matrix.ruby-version }}/${{ matrix.arch }}/bin/ridk.cmd exec sh -c "pacman -S --noconfirm make gcc mingw-w64-clang-aarch64-clang"
+
+      - name: build ruby ${{ matrix.ruby-version }} ${{ matrix.arch }}
+        working-directory: windows
+        run: |
+            uname -m
+            mkdir -p cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
+            ./build-ruby.sh -a ${{ matrix.arch }} -r ${{ matrix.ruby-version }} cache output/${{ matrix.ruby-version }}/${{ matrix.arch }}
+        env:
+          RUBY_VERSIONS: ${{ matrix.ruby-version }}
+          ARCHITECTURES: ${{ matrix.arch }}
+          # Maps clang's aarch64-w64-windows-gnu target to aarch64-w64-mingw32
+          # so config.sub/libtool accept it (flavorjones/mini_portile#161).
+          MINI_PORTILE_REPO: https://github.com/YOU54F/mini_portile
+          MINI_PORTILE_REF: fix/llvm-windows-gnu-target
+      - name: package ${{ matrix.arch }}
+        # shell: bash
+        working-directory: windows
+        run: |
+            ./package.sh -r traveling-ruby-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch }}.tar.gz output/${{ matrix.ruby-version }}/${{ matrix.arch }}
+            ./package.sh -E traveling-ruby-gems-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch }} output/${{ matrix.ruby-version }}/${{ matrix.arch }}
+            touch traveling-ruby-gems-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch }}/ok
+            ./package.sh -f -r traveling-ruby-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch }}-full.tar.gz output/${{ matrix.ruby-version }}/${{ matrix.arch }}
+        env:
+          RUBY_VERSIONS: ${{ matrix.ruby-version }}
+          ARCHITECTURES: ${{ matrix.arch }}
+      - name: test gems
+        # shell: bash
+        working-directory: windows
+        run: |
+          ../shared/test-gems.sh -p windows -a ${{ matrix.arch }} output/${{ matrix.ruby-version }}/${{ matrix.arch }}
+        env:
+          RUBY_VERSIONS: ${{ matrix.ruby-version }}
+          ARCHITECTURES: ${{ matrix.arch }}
+      - name: package gems
+        # shell: bash
+        run: ./scripts/package-gems.sh    
+        env:
+          PLATFORM: windows
+      - name: "Upload Artifact - traveling-ruby-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch }}"
+        uses: actions/upload-artifact@v5
+        with:
+          name: traveling-ruby-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch}}.tar.gz
+          path: windows/*.tar.gz
+
+      - name: Publish archives and packages
+        if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
+        uses: softprops/action-gh-release@master
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          name: 'Release ${{ github.event.release.tag_name }}'
+          generate_release_notes: true
+          body: ${{ github.event.release.body }}
+          files: windows/traveling-ruby-*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  test-windows-min:
+    needs: build-windows
+    if: (!contains((github.event.head_commit.message || ''), '(') || contains((github.event.head_commit.message || ''), '(windows)') || contains((github.event.head_commit.message || ''), '(windows-arm64)'))
+    strategy:
+      matrix:
+        arch: [arm64]
+        ruby-version: [3.4.12, 4.0.9]
+      fail-fast: false
+    runs-on: windows-11-arm
+    steps:
+      - uses: actions/checkout@v5
+      - name: "Download Artifact"
+        uses: actions/download-artifact@v5
+        with:
+          name: traveling-ruby-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch }}.tar.gz
+          path: windows/
+      - name: "Test binary"
+        working-directory: windows
+        shell: bash
+        run: |
+          mkdir output
+          tar xzf traveling-ruby-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch }}.tar.gz -C output
+          ../shared/test-gems.sh -p windows -a ${{ matrix.arch }} output
+        env:
+          RUBY_VERSIONS: ${{ matrix.ruby-version }}
+          ARCHITECTURES: ${{ matrix.arch }}
+  test-windows-full:
+    needs: build-windows
+    if: (!contains((github.event.head_commit.message || ''), '(') || contains((github.event.head_commit.message || ''), '(windows)') || contains((github.event.head_commit.message || ''), '(windows-arm64)'))
+    strategy:
+      matrix:
+        arch: [arm64]
+        ruby-version: [4.0.9]
+      fail-fast: false
+    runs-on: windows-11-arm
+    steps:
+      - uses: actions/checkout@v5
+      - name: "Download Artifact"
+        uses: actions/download-artifact@v5
+        with:
+          name: traveling-ruby-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch }}.tar.gz
+          path: windows/
+      - name: "Test binary"
+        working-directory: windows
+        shell: bash
+        run: |
+          mkdir output
+          tar xzf traveling-ruby-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch }}-full.tar.gz -C output
+          ../shared/test-gems.sh -p windows -a ${{ matrix.arch }} output
+        env:
+          RUBY_VERSIONS: ${{ matrix.ruby-version }}
+          ARCHITECTURES: ${{ matrix.arch }}

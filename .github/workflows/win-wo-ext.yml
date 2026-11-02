@@ -5,11 +5,9 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  release:
-    types: [published]
 
 env:
-  PKG_DATE: 20251122
+  PKG_DATE: 20261102
 
 jobs:
   build-windows:
@@ -17,10 +15,14 @@ jobs:
     strategy:
       matrix:
         arch: [x86_64, x86]
-        ruby-version: [3.2.9, 3.3.10, 3.4.7]
+        ruby-version: [3.3.13, 3.4.12, 4.0.9]
+        # RubyInstaller 4.0 has no x86 build
+        exclude:
+          - arch: x86
+            ruby-version: 4.0.9
         include:
           - arch: arm64
-            ruby-version: 3.4.7
+            ruby-version: 4.0.9
       fail-fast: false
     steps:
       - uses: actions/checkout@v5
@@ -38,35 +40,25 @@ jobs:
         env:
           RUBY_VERSIONS: ${{ matrix.ruby-version }}
           ARCHITECTURES: ${{ matrix.arch }}
-      - name: "Upload Artifact - traveling-ruby-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch }}"
+      # Release packages come from the Windows workflow, which bundles the DLLs
+      # this cross-built package lacks
+      - name: "Upload Artifact - traveling-ruby-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch }}-via-unix"
         uses: actions/upload-artifact@v5
         with:
-          name: traveling-ruby-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch }}.tar.gz
+          name: traveling-ruby-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch }}-via-unix.tar.gz
           path: windows/traveling-ruby-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch }}.tar.gz
-
-      - name: Publish archives and packages
-        if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
-        uses: softprops/action-gh-release@master
-        with:
-          tag_name: ${{ github.event.release.tag_name }}
-          name: 'Release ${{ github.event.release.tag_name }}'
-          generate_release_notes: true
-          body: ${{ github.event.release.body }}
-          files: windows/traveling-ruby-*.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   test-windows:
     needs: build-windows
     strategy:
       matrix:
         arch: [x86_64]
-        ruby-version: [3.2.9, 3.3.10, 3.4.7]
+        ruby-version: [3.3.13, 3.4.12, 4.0.9]
         os: [windows-latest]
         include:
           - os: windows-11-arm
             arch: arm64
-            ruby-version: 3.4.7
+            ruby-version: 4.0.9
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -74,7 +66,7 @@ jobs:
       - name: "Download Artifact"
         uses: actions/download-artifact@v5
         with:
-          name: traveling-ruby-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch }}.tar.gz
+          name: traveling-ruby-${{ env.PKG_DATE }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch }}-via-unix.tar.gz
           path: windows/
       - name: "Test binary"
         working-directory: windows

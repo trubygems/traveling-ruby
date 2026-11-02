@@ -106,6 +106,7 @@ rubocop-performance
 rubocop-rails
 rubocop-rails-omakase
 repl_type_completor
+solid_cable
 vips
 )
 # /home/linux/output/3.4.7-arm64/lib/ruby/gems/3.4.0/gems/ffi-1.17.2/lib/ffi/dynamic_library.rb:94:in 'FFI::DynamicLibrary.load_library': Could not open library 'vips.so.42': vips.so.42: cannot open shared object file: No such file or directory. (LoadError)
@@ -121,11 +122,20 @@ echo "Gems to test: ${GEMS_TO_TEST[@]}"
 echo "Gems to fail: ${GEMS_TO_FAIL[@]}"
 
 header "Listing gems versions in $BUILD_OUTPUT_DIR"
-GEM_LIST=$("$BUILD_OUTPUT_DIR/bin/gem$EXE_SUFFIX" list)
+if ! GEM_LIST=$("$BUILD_OUTPUT_DIR/bin/gem$EXE_SUFFIX" list) || [[ -z "$GEM_LIST" ]]; then
+	echo "$GEM_LIST"
+	error "gem list failed or returned no gems"
+	exit 1
+fi
 echo "$GEM_LIST"
 echo "$GEM_LIST" >> "$BUILD_OUTPUT_DIR/test_report"
+# win32-registry needs fiddle, a bundled gem since Ruby 4.0, which the
+# default gems package leaves out
+if [[ "$PLATFORM" == "windows" ]] && ! grep -q "^fiddle " <<<"$GEM_LIST"; then
+	GEMS_TO_FAIL+=("win32/registry")
+fi
 # header "modifying gem names in $BUILD_OUTPUT_DIR for testing"
-GEMS=($("$BUILD_OUTPUT_DIR/bin/gem$EXE_SUFFIX" list | awk '{gsub(/tzinfo-data/, "tzinfo/data"); gsub(/bundler-audit/, "bundler/audit"); gsub(/ruby-vips/, "vips"); gsub(/rubyzip/, "zip"); gsub(/unicode-emoji/, "unicode/emoji"); gsub(/unicode-display_width/, "unicode/display_width"); gsub(/rinda/, "rinda/rinda"); gsub(/win32-registry/, "win32/registry"); gsub(/io-/, "io/"); gsub(/net-/, "net/"); gsub(/term-ansicolor/, "term/ansicolor"); gsub(/yajl-ruby/, "yajl"); gsub(/railties/, "rails/railtie"); gsub(/semver2/, "semver"); gsub(/pact-provider-verifier/, "pact/provider_verifier/cli/verify"); gsub(/pact_broker-client/, "pact_broker/client/tasks"); gsub(/pact-/, "pact/"); gsub(/faraday-/, "faraday/"); gsub(/action_text-trix/, "action_text/trix"); gsub(/actioncable/, "action_cable"); gsub(/actionmailbox/, "action_mailbox"); gsub(/actionmailer/, "action_mailer"); gsub(/actionpack/, "action_pack"); gsub(/actiontext/, "action_text"); gsub(/actionview/, "action_view"); gsub(/activejob/, "active_job"); gsub(/activemodel/, "active_model"); gsub(/activerecord/, "active_record"); gsub(/activestorage/, "active_storage"); gsub(/activesupport/, "active_support"); gsub(/as-notifications/, "as/notifications"); gsub(/rack-session/, "rack/session"); gsub(/rack-test/, "rack/test"); gsub(/ruby-next-core/, "ruby-next/core"); gsub(/websocket-driver/, "websocket/driver"); gsub(/websocket-extensions/, "websocket/extensions"); sub(/-ext$/, ""); sub(/-ruby$/, ""); sub(/english/, "English"); print $1}' | grep -v -- "-ext"))
+GEMS=($("$BUILD_OUTPUT_DIR/bin/gem$EXE_SUFFIX" list | awk '{gsub(/tzinfo-data/, "tzinfo/data"); gsub(/bundler-audit/, "bundler/audit"); gsub(/ruby-vips/, "vips"); gsub(/rubyzip/, "zip"); gsub(/unicode-emoji/, "unicode/emoji"); gsub(/unicode-display_width/, "unicode/display_width"); gsub(/rinda/, "rinda/rinda"); gsub(/win32-registry/, "win32/registry"); gsub(/io-/, "io/"); gsub(/net-/, "net/"); gsub(/term-ansicolor/, "term/ansicolor"); gsub(/yajl-ruby/, "yajl"); gsub(/railties/, "rails/railtie"); gsub(/semver2/, "semver"); gsub(/pact-provider-verifier/, "pact/provider_verifier/cli/verify"); gsub(/pact_broker-client/, "pact_broker/client/tasks"); gsub(/pact-/, "pact/"); gsub(/faraday-/, "faraday/"); gsub(/action_text-trix/, "action_text/trix"); gsub(/actioncable/, "action_cable"); gsub(/actionmailbox/, "action_mailbox"); gsub(/actionmailer/, "action_mailer"); gsub(/actionpack/, "action_pack"); gsub(/actiontext/, "action_text"); gsub(/actionview/, "action_view"); gsub(/activejob/, "active_job"); gsub(/activemodel/, "active_model"); gsub(/activerecord/, "active_record"); gsub(/activestorage/, "active_storage"); gsub(/activesupport/, "active_support"); gsub(/as-notifications/, "as/notifications"); gsub(/rack-session/, "rack/session"); gsub(/rack-test/, "rack/test"); gsub(/ruby-next-core/, "ruby-next/core"); gsub(/websocket-driver/, "websocket/driver"); gsub(/websocket-extensions/, "websocket/extensions"); sub(/^sinatra /, "sinatra/base "); sub(/-ext$/, ""); sub(/-ruby$/, ""); sub(/english/, "English"); print $1}' | grep -v -- "-ext"))
 if [ ${#GEMS[@]} -eq 0 ]; then
 	GEMS=("${GEMS_TO_TEST[@]}")
 else
@@ -136,6 +146,8 @@ fi
 header "Testing gems..."
 export LD_BIND_NOW=1
 export DYLD_BIND_AT_LAUNCH=1
+# padrino-core derives its root from the calling file, which -e does not have
+export PADRINO_ROOT=/tmp
 ERRORS=()
 for LIB in ${GEMS[@]}; do
 	if [[ " ${GEMS_TO_SKIP[@]} " =~ " ${LIB} " ]]; then # Check if the current gem is in the GEMS_TO_SKIP array
@@ -143,7 +155,7 @@ for LIB in ${GEMS[@]}; do
 		continue
 	fi
 	if ! "$BUILD_OUTPUT_DIR/bin/ruby$EXE_SUFFIX" -r$LIB -e true ; then
-		if [[ "$LIB" == "action_text/trix" || "$LIB" == "rails/railtie" || "$LIB" == "solid_cache" || "$LIB" == "solid_cable" || "$LIB" == "solid_queue" || "$LIB" == "stimulus-rails" || "$LIB" == "turbo-rails" ]]; then
+		if [[ "$LIB" == "action_text/trix" || "$LIB" == "rails/railtie" || "$LIB" == "solid_cache" || "$LIB" == "solid_cable" || "$LIB" == "solid_queue" || "$LIB" == "stimulus-rails" || "$LIB" == "turbo-rails" || "$LIB" == "active_storage" ]]; then
 			echo "Testing $LIB with active_support/all required first"
 			if "$BUILD_OUTPUT_DIR/bin/ruby$EXE_SUFFIX" -rrails -ractive_support -ractive_model -r$LIB -e true ; then
 				success "Gem $LIB OK!"

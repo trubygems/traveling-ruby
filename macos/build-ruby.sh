@@ -337,7 +337,7 @@ GEM_EXTENSION_API_VERSION=`"$TMPBUILDROOT/bin/ruby" -e 'puts Gem.extension_api_v
 run mkdir info
 echo "Dumping information about the Ruby binaries into $TMPBUILDROOT/info"
 echo $RUBY_COMPAT_VERSION > info/RUBY_COMPAT_VERSION
-echo $RUBYARCH > info/RUBY_ARCH
+echo $RUBY_ARCH > info/RUBY_ARCH
 echo $GEM_PLATFORM > info/GEM_PLATFORM
 echo $GEM_EXTENSION_API_VERSION > info/GEM_EXTENSION_API_VERSION
 echo "RUBY_COMPAT_VERSION is $RUBY_COMPAT_VERSION"
@@ -372,6 +372,9 @@ if [[ "$GEMFILE" != "" ]]; then
 		run "$TMPBUILDROOT/bin/gem" update --system $RUBYGEMS_VERSION --no-document
 		run "$TMPBUILDROOT/bin/gem" uninstall -x rubygems-update
 	fi
+	# Installed after the RubyGems update, which would remove it.
+	run mkdir -p "$TMPBUILDROOT/lib/ruby/site_ruby/$RUBY_COMPAT_VERSION/rubygems/defaults"
+	run cp "$SELFDIR/../shared/rubygems_operating_system.rb" "$TMPBUILDROOT/lib/ruby/site_ruby/$RUBY_COMPAT_VERSION/rubygems/defaults/operating_system.rb"
 
 	# Install Bundler, either from cache or directly.
 	if [[ -e "$RUNTIME_DIR/vendor/cache/bundler-$BUNDLER_VERSION.gem" ]]; then
@@ -423,6 +426,9 @@ find . -name '*.dylib'
 	find . -name '*.dylib' | xargs strip -S
 )
 [[ $? == 0 ]]
+# Remove macOS dSYM debug symbol directories - they are not needed at runtime
+# and would bloat the package (~9MB on arm64).
+find . -name '*.dSYM' -exec rm -rf {} + 2>/dev/null || true
 run rm bin/{erb,rdoc,ri}
 run rm -f bin/testrb # Only Ruby 2.1 has it
 run rm -rf include

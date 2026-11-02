@@ -8,11 +8,19 @@ on:
   release:
     types: [published]
 
+# Commit message keyword filtering:
+# - "(linux)" → run Linux workflows (x86_64 + arm64)
+# - "(windows)", "(macos)", "(macos-arm64)", "(macos-x86_64)", "(linux-musl)" → skip
+# - No keyword → run all (backward compatible)
+
 env:
-  PKG_DATE: 20251122
+  PKG_DATE: 20261102
 
 jobs:
   setup-ruby-versions:
+    if: |
+      (contains(github.event.head_commit.message || '', '(linux)') ||
+       !contains(github.event.head_commit.message || '', '('))
     runs-on: ubuntu-latest
     outputs:
       versions: ${{ steps.set-versions.outputs.ruby_versions }}
@@ -20,13 +28,12 @@ jobs:
       - name: Set Ruby versions
         id: set-versions
         run: |
-          if [[ "${GITHUB_REF}" == *preview* || "${GITHUB_HEAD_REF}" == *preview* || "${GITHUB_REF_NAME}" == *preview* ]]; then
-            echo "ruby_versions=['3.5.0-preview1','4.0.0-preview2']" >> $GITHUB_OUTPUT
-          else
-            echo "ruby_versions=['3.2.9','3.3.10','3.4.7']" >> $GITHUB_OUTPUT
-          fi
+          echo "ruby_versions=['3.3.13','3.4.12','4.0.9']" >> $GITHUB_OUTPUT
 
   make-linux-arm64:
+    if: |
+      (contains(github.event.head_commit.message || '', '(linux)') ||
+       !contains(github.event.head_commit.message || '', '('))
     needs: [ setup-ruby-versions ]
     strategy:
       matrix:

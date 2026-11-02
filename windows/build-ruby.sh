@@ -93,14 +93,14 @@ GOTO :EOF
 set RUBY_COMPAT_VERSION=$RUBY_COMPAT_VERSION
 set RUBY_ARCH=$RUBY_ARCH
 
-set RUBYLIB=%~dp0..\\lib\\ruby\\site_ruby\\%RUBY_COMPAT_VERSION%
+set RUBYLIB=%~dp0..\\lib\\ruby\\%RUBY_COMPAT_VERSION%
+set RUBYLIB=%RUBYLIB%;%~dp0..\\lib\\ruby\\%RUBY_COMPAT_VERSION%\\%RUBY_ARCH%
+set RUBYLIB=%RUBYLIB%;%~dp0..\\lib\\ruby\\site_ruby\\%RUBY_COMPAT_VERSION%
 set RUBYLIB=%RUBYLIB%;%~dp0..\\lib\\ruby\\site_ruby\\%RUBY_COMPAT_VERSION%\\%RUBY_ARCH%
 set RUBYLIB=%RUBYLIB%;%~dp0..\\lib\\ruby\\site_ruby
 set RUBYLIB=%RUBYLIB%;%~dp0..\\lib\\ruby\\vendor_ruby\\%RUBY_COMPAT_VERSION%
 set RUBYLIB=%RUBYLIB%;%~dp0..\\lib\\ruby\\vendor_ruby\\%RUBY_COMPAT_VERSION%\\%RUBY_ARCH%
 set RUBYLIB=%RUBYLIB%;%~dp0..\\lib\\ruby\\vendor_ruby
-set RUBYLIB=%RUBYLIB%;%~dp0..\\lib\\ruby\\%RUBY_COMPAT_VERSION%
-set RUBYLIB=%RUBYLIB%;%~dp0..\\lib\\ruby\\%RUBY_COMPAT_VERSION%\\%RUBY_ARCH%
 set RUBY_COMPAT_VERSION=
 set RUBY_ARCH=
 
@@ -189,8 +189,14 @@ fi
 header "Analyzing Ruby..."
 if [[ "$OS" =~ Windows ]]; then
 	export PATH="$OUTPUT_DIR/bin:$PATH"
+	echo "+ MSYS2 for gem builds: $(ruby -e 'require "ruby_installer/runtime"; puts RubyInstaller::Runtime.msys2_installation.msys_path' 2>&1)"
+	echo "+ $(command -v make sh rm dlltool gcc | tr '\n' ' ')"
 else
-	chmod +x $OUTPUT_DIR/bin/gem
+	# Off Windows, bin/gem and bin/bundle would run the host Ruby (or not run
+	# at all), so native gems can't be built. Ship Ruby with just Bundler,
+	# which is pure Ruby and can be installed by the host's gem command.
+	GEMFILE=
+	BUNDLER_INSTALL_ONLY=1
 fi
 RUBY_COMPAT_VERSION=`grep '"ruby_version"' "$OUTPUT_DIR"/lib/ruby/*/*/rbconfig.rb | sed -E 's/.*=//; s/.*"(.*)".*/\1/'`
 RUBY_ARCH=`grep '"arch"' "$OUTPUT_DIR"/lib/ruby/*/*/rbconfig.rb | sed -E 's/.*=//; s/.*"(.*)".*/\1/'`
@@ -215,6 +221,14 @@ fi
 
 
 echo $GEMFILE
+
+if [[ -n "$BUNDLER_INSTALL_ONLY" ]]; then
+	header "Installing Bundler with the host gem command..."
+	run gem install bundler -v "$BUNDLER_VERSION" --no-document \
+		--install-dir "$OUTPUT_DIR/lib/ruby/gems/$RUBY_COMPAT_VERSION" \
+		--bindir "$CACHE_DIR/host-bin"
+	echo
+fi
 
 if [[ "$GEMFILE" != "" ]]; then
 	# Restore cached gems.
@@ -248,6 +262,20 @@ if [[ "$GEMFILE" != "" ]]; then
 		run "$OUTPUT_DIR/bin/gem" install "$CACHE_DIR/vendor/cache/bundler-$BUNDLER_VERSION.gem" --no-document
 	else
 		run "$OUTPUT_DIR/bin/gem" install bundler -v $BUNDLER_VERSION --no-document
+	fi
+
+	# Optionally pre-install mini_portile2 from a git branch, e.g. to try an
+	# unreleased fix. It must carry the version in Gemfile.lock so Bundler
+	# treats it as already installed and native gems build with it.
+	if [[ -n "$MINI_PORTILE_REPO" ]]; then
+		header "Installing mini_portile2 from $MINI_PORTILE_REPO@${MINI_PORTILE_REF:-HEAD}..."
+		MINI_PORTILE_SRC="$CACHE_DIR/mini_portile-src"
+		run rm -rf "$MINI_PORTILE_SRC"
+		run git clone --depth 1 ${MINI_PORTILE_REF:+--branch "$MINI_PORTILE_REF"} "$MINI_PORTILE_REPO" "$MINI_PORTILE_SRC"
+		(cd "$MINI_PORTILE_SRC" && "$OUTPUT_DIR/bin/gem" build mini_portile2.gemspec)
+		run "$OUTPUT_DIR/bin/gem" install --local "$MINI_PORTILE_SRC"/mini_portile2-*.gem --no-document
+		run rm -rf "$MINI_PORTILE_SRC"
+		echo
 	fi
 
 	# Run bundle install for each Gemfile.
@@ -293,6 +321,15 @@ echo "+ Entering $OUTPUT_DIR"
 pushd "$OUTPUT_DIR"
 
 run cp "$SELFDIR/../shared/ca-bundle.crt" lib/
+
+# RubyGems loads a single operating_system.rb and RubyInstaller ships its own,
+# so prepend the Traveling Ruby hook to it. Prepend, as RubyInstaller's code can
+# raise a LoadError (fiddle is not a default gem on Ruby 4.0), and RubyGems then
+# silently skips the rest of the file.
+echo "+ Prepending rubygems_operating_system.rb to RubyInstaller's operating_system.rb"
+OS_RB=lib/ruby/$RUBY_COMPAT_VERSION/rubygems/defaults/operating_system.rb
+{ cat "$SELFDIR/../shared/rubygems_operating_system.rb"; echo; cat "$OS_RB"; } > "$OS_RB.new"
+run mv "$OS_RB.new" "$OS_RB"
 
 run rm bin/{erb,rdoc,ri}*
 run rm -rf include
@@ -346,9 +383,15 @@ DLLS=(
 	libunistring-5.dll
 	libzstd.dll
 	libstdc++-6.dll
+	libgcc_s_seh-1.dll
+	libffi-8.dll
+	libc++.dll
+	libunwind.dll
 )
 
-# libstdc++-6.dll is needed for unf_ext gem on x64
+# libstdc++-6.dll and libgcc_s_seh-1.dll are needed for unf_ext and eventmachine on x64
+# libc++.dll and libunwind.dll are their clang equivalents on arm64
+# libffi-8.dll is needed for ffi; RubyInstaller 4.0 no longer ships it as fiddle is now a bundled gem
 # pacman -S mingw-w64-cross-mingwarm64-gcc
 # provides /opt/lib/gcc/aarch64-w64-mingw32/15.0.1/libstdc++-6.dll
 
@@ -377,5 +420,18 @@ fi
 echo "+ Leaving $OUTPUT_DIR"
 popd >/dev/null
 echo
+
+# The DLLs are only copied when building on Windows, under MSYS2
+if [[ -d "$BIN_DIR" ]]; then
+	header "Checking that all imported DLLs are bundled"
+	for OBJDUMP in "$BIN_DIR/objdump.exe" "$BIN_DIR/llvm-objdump.exe"; do
+		if [[ -f "$OBJDUMP" ]]; then
+			export OBJDUMP
+			break
+		fi
+	done
+	run "$SELFDIR/sanity-check.sh" "$OUTPUT_DIR"
+	echo
+fi
 
 header "All done!"
