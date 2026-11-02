@@ -125,6 +125,10 @@ jobs:
         env:
           RUBY_VERSIONS: ${{ matrix.ruby-version }}
           ARCHITECTURES: ${{ matrix.arch }}
+          # Maps clang's aarch64-w64-windows-gnu target to aarch64-w64-mingw32
+          # so config.sub/libtool accept it (flavorjones/mini_portile#161).
+          MINI_PORTILE_REPO: https://github.com/YOU54F/mini_portile
+          MINI_PORTILE_REF: fix/llvm-windows-gnu-target
       - name: package ${{ matrix.arch }}
         # shell: bash
         working-directory: windows

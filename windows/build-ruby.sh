@@ -264,6 +264,20 @@ if [[ "$GEMFILE" != "" ]]; then
 		run "$OUTPUT_DIR/bin/gem" install bundler -v $BUNDLER_VERSION --no-document
 	fi
 
+	# Optionally pre-install mini_portile2 from a git branch, e.g. to try an
+	# unreleased fix. It must carry the version in Gemfile.lock so Bundler
+	# treats it as already installed and native gems build with it.
+	if [[ -n "$MINI_PORTILE_REPO" ]]; then
+		header "Installing mini_portile2 from $MINI_PORTILE_REPO@${MINI_PORTILE_REF:-HEAD}..."
+		MINI_PORTILE_SRC="$CACHE_DIR/mini_portile-src"
+		run rm -rf "$MINI_PORTILE_SRC"
+		run git clone --depth 1 ${MINI_PORTILE_REF:+--branch "$MINI_PORTILE_REF"} "$MINI_PORTILE_REPO" "$MINI_PORTILE_SRC"
+		(cd "$MINI_PORTILE_SRC" && "$OUTPUT_DIR/bin/gem" build mini_portile2.gemspec)
+		run "$OUTPUT_DIR/bin/gem" install --local "$MINI_PORTILE_SRC"/mini_portile2-*.gem --no-document
+		run rm -rf "$MINI_PORTILE_SRC"
+		echo
+	fi
+
 	# Run bundle install for each Gemfile.
 	for GEMFILE in "${GEMFILES[@]}"; do
 		run cp "$GEMFILE" ./
