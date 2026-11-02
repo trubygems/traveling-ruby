@@ -9,7 +9,7 @@ on:
     types: [published]
 
 env:
-  PKG_DATE: 20251122
+  PKG_DATE: 20260922
 
 jobs:
   build-windows:
@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         arch: [x86_64]
-        ruby-version: [3.2.9, 3.3.10, 3.4.7]
+        ruby-version: [3.3.13, 3.4.12, 4.0.7]
         os: [windows-latest]
         # include:
         #   - os: windows-11-arm
@@ -164,7 +164,7 @@ jobs:
     strategy:
       matrix:
         arch: [x86_64]
-        ruby-version: [3.2.9, 3.3.10, 3.4.7]
+        ruby-version: [3.3.13, 3.4.12, 4.0.7]
         os: [windows-latest]
         # include:
         #   - os: windows-11-arm
@@ -194,7 +194,7 @@ jobs:
     strategy:
       matrix:
         arch: [x86_64]
-        ruby-version: [3.4.7]
+        ruby-version: [4.0.7]
         os: [windows-latest]
         # include:
         #   - os: windows-11-arm
