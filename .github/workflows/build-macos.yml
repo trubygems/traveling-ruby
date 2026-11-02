@@ -6,9 +6,6 @@ on:
       arch:
         required: true
         type: string
-      pkg-date:
-        required: true
-        type: string
       ruby-versions:
         description: 'JSON array of Ruby versions'
         required: true
@@ -84,6 +81,8 @@ jobs:
 
       - name: Package gems
         run: ./scripts/package-gems.sh
+        env:
+          PLATFORM: macos
 
       - uses: actions/upload-artifact@v5
         with:

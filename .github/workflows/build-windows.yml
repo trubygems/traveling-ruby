@@ -7,7 +7,8 @@ on:
         description: 'x86_64 or arm64'
         required: true
         type: string
-      pkg-date:
+      revisions:
+        description: 'JSON object of Ruby version to package revision'
         required: true
         type: string
       ruby-versions:
@@ -36,8 +37,8 @@ jobs:
     runs-on: ${{ inputs.arch == 'arm64' && 'windows-11-arm' || 'windows-latest' }}
     env:
       RUBY_VERSIONS: ${{ matrix.ruby-version }}
-      PKG: traveling-ruby-${{ inputs.pkg-date }}-${{ matrix.ruby-version }}-windows-${{ inputs.arch }}
-      GEMS: traveling-ruby-gems-${{ inputs.pkg-date }}-${{ matrix.ruby-version }}-windows-${{ inputs.arch }}
+      PKG: traveling-ruby-${{ matrix.ruby-version }}-${{ fromJSON(inputs.revisions)[matrix.ruby-version] }}-windows-${{ inputs.arch }}
+      GEMS: traveling-ruby-gems-${{ matrix.ruby-version }}-${{ fromJSON(inputs.revisions)[matrix.ruby-version] }}-windows-${{ inputs.arch }}
       OUTPUT: output/${{ matrix.ruby-version }}/${{ inputs.arch }}
     steps:
       - uses: actions/checkout@v5
@@ -46,13 +47,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: windows/cache/vendor
-          key: windows-vendor-cache-${{ inputs.pkg-date }}-${{ matrix.ruby-version }}-${{ inputs.arch }}-${{ hashFiles(format('shared/gemfiles/{0}/Gemfile*', inputs.pkg-date)) }}
+          key: windows-vendor-cache-${{ matrix.ruby-version }}-${{ fromJSON(inputs.revisions)[matrix.ruby-version] }}-${{ inputs.arch }}-${{ hashFiles('shared/gemfiles/*/Gemfile*') }}
 
       - name: Cache RubyInstaller archives
         uses: actions/cache@v4
         with:
           path: windows/cache/*.7z
-          key: windows-rubyinstaller-cache-${{ inputs.pkg-date }}-${{ matrix.ruby-version }}-${{ inputs.arch }}
+          key: windows-rubyinstaller-cache-${{ matrix.ruby-version }}-${{ inputs.arch }}
 
       - uses: ruby/setup-ruby-pkgs@v1
         with:
@@ -127,5 +128,5 @@ jobs:
         working-directory: windows
         run: |
           mkdir output
-          tar xzf "traveling-ruby-${{ inputs.pkg-date }}-${{ matrix.ruby-version }}-windows-${{ inputs.arch }}${{ matrix.package == 'full' && '-full' || '' }}.tar.gz" -C output
+          tar xzf "traveling-ruby-${{ matrix.ruby-version }}-${{ fromJSON(inputs.revisions)[matrix.ruby-version] }}-windows-${{ inputs.arch }}${{ matrix.package == 'full' && '-full' || '' }}.tar.gz" -C output
           ../shared/test-gems.sh -p windows -a "$ARCHITECTURES" output

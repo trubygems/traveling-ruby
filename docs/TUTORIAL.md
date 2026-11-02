@@ -32,13 +32,13 @@ hello
 
 ### Choosing a Ruby
 
-The top of the `Rakefile` names the Traveling Ruby package to use, as `<release>-<ruby version>`:
+The top of the `Rakefile` names the Traveling Ruby package to use, as `<ruby version>-<revision>`:
 
 ```ruby
-TRAVELING_RUBY_VERSION = "20261102-3.4.12"
+TRAVELING_RUBY_VERSION = "3.4.12-0"
 ```
 
-The [README](../README.md#platforms) lists the Ruby versions in the current release, and the [releases page](https://github.com/trubygems/traveling-ruby/releases) lists every release.
+The [README](../README.md#platforms) lists the Ruby versions Traveling Ruby builds, [versions/RUBY_REVISIONS.txt](../versions/RUBY_REVISIONS.txt) their current revisions, and the [releases page](https://github.com/trubygems/traveling-ruby/releases) every release.
 
 ### Packaging
 
@@ -129,12 +129,12 @@ NATIVE_GEM_VERSIONS = {
 }
 ```
 
-For each platform, `download_and_unpack_ext` downloads `traveling-ruby-gems-<release>-<ruby>-<platform>-<arch>-sqlite3-2.8.0.tar.gz` and unpacks it into `lib/vendor/ruby`, over the gem source that Bundler installed.
+For each platform, `download_and_unpack_ext` downloads `traveling-ruby-gems-<ruby>-<revision>-<platform>-<arch>-sqlite3-2.8.0.tar.gz` and unpacks it into `lib/vendor/ruby`, over the gem source that Bundler installed.
 
-The versions must be ones the release built. They are pinned in [shared/gemfiles](../shared/gemfiles) for each release, and listed among the release assets:
+The versions must be ones Traveling Ruby has built. The current ones are pinned in [shared/gemfiles](../shared/gemfiles), and every version built so far is listed in the release's `manifest.json`:
 
 ```bash
-gh release view rel-20261102 --repo trubygems/traveling-ruby --json assets --jq '.assets[].name' | grep '^traveling-ruby-gems-.*-3.4.12-linux-x86_64-'
+curl -fsSL https://github.com/trubygems/traveling-ruby/releases/download/ruby-3.4.12-0-linux-x86_64/manifest.json | jq -r '.gems[] | "\(.name) \(.version)"'
 ```
 
 Lock the same versions in `packaging/Gemfile.lock`. If you need a gem that Traveling Ruby doesn't build, add it to the Gemfile in `shared/gemfiles` in a fork, and [build the packages yourself](BUILDING.md).

@@ -1,10 +1,10 @@
 #!/bin/sh
 
-# ./scripts/build-docker-images.sh -m -p -v 3.4.7
+# ./scripts/build-docker-images.sh -m -p -v 3.4.12
 
 # Define the default values for the arguments
-DEFAULT_TRAVELING_RUBY_VERSION=3.4.7
-DEFAULT_TRAVELING_RUBY_PKG_DATE=20251122
+DEFAULT_TRAVELING_RUBY_VERSION=3.4.12
+DEFAULT_TRAVELING_RUBY_REVISION=0
 DEFAULT_TRAVELING_RUBY_GH_SOURCE=trubygems/traveling-ruby
 DOCKER_IMAGE_ORG_AND_NAME="you54f/traveling-ruby"
 
@@ -16,7 +16,7 @@ usage() {
   echo "Options:"
   echo "  -h, --help                        Show this help message and exit."
   echo "  -v, --version VERSION             Set the Traveling Ruby version (default: ${DEFAULT_TRAVELING_RUBY_VERSION})."
-  echo "  -d, --pkg-date PKG_DATE           Set the Traveling Ruby package date (default: ${DEFAULT_TRAVELING_RUBY_PKG_DATE})."
+  echo "  -r, --revision REVISION           Set the Traveling Ruby package revision (default: ${DEFAULT_TRAVELING_RUBY_REVISION})."
   echo "  -s, --gh-source GH_SOURCE         Set the Traveling Ruby GitHub source (default: ${DEFAULT_TRAVELING_RUBY_GH_SOURCE})."
     echo "  -m, --multi-platform              Build a multi-platform image."
     echo "  -p, --push                        Push the Docker image to the registry."
@@ -35,8 +35,8 @@ usage() {
         TRAVELING_RUBY_VERSION="$2"
         shift 2
         ;;
-      -d|--pkg-date)
-        TRAVELING_RUBY_PKG_DATE="$2"
+      -r|--revision)
+        TRAVELING_RUBY_REVISION="$2"
         shift 2
         ;;
       -s|--gh-source)
@@ -76,7 +76,7 @@ usage() {
   LATEST_MAJOR_MINOR=("2.7.8" "3.2.9")
   # Set the values for the arguments
   TRAVELING_RUBY_VERSION=${TRAVELING_RUBY_VERSION:-$DEFAULT_TRAVELING_RUBY_VERSION}
-  TRAVELING_RUBY_PKG_DATE=${TRAVELING_RUBY_PKG_DATE:-$DEFAULT_TRAVELING_RUBY_PKG_DATE}
+  TRAVELING_RUBY_REVISION=${TRAVELING_RUBY_REVISION:-$DEFAULT_TRAVELING_RUBY_REVISION}
   TRAVELING_RUBY_GH_SOURCE=${TRAVELING_RUBY_GH_SOURCE:-$DEFAULT_TRAVELING_RUBY_GH_SOURCE}
   MULTI_PLATFORM=${MULTI_PLATFORM:-0}
   PUSH=${PUSH:-0}
@@ -95,7 +95,7 @@ run_image(){
         docker buildx build \
         --platform linux/amd64,linux/arm64 \
         --build-arg TRAVELING_RUBY_VERSION=${TRAVELING_RUBY_VERSION} \
-        --build-arg TRAVELING_RUBY_PKG_DATE=${TRAVELING_RUBY_PKG_DATE} \
+        --build-arg TRAVELING_RUBY_REVISION=${TRAVELING_RUBY_REVISION} \
         --build-arg TRAVELING_RUBY_GH_SOURCE=${TRAVELING_RUBY_GH_SOURCE} \
         --output=type=image${PUSH_CMD} \
         --tag ${DOCKER_IMAGE_ORG_AND_NAME}:${TAG} \
@@ -138,7 +138,7 @@ run_image(){
         docker buildx build \
           --platform linux/${ARCH} \
           --build-arg TRAVELING_RUBY_VERSION=${TRAVELING_RUBY_VERSION} \
-          --build-arg TRAVELING_RUBY_PKG_DATE=${TRAVELING_RUBY_PKG_DATE} \
+          --build-arg TRAVELING_RUBY_REVISION=${TRAVELING_RUBY_REVISION} \
           --build-arg TRAVELING_RUBY_GH_SOURCE=${TRAVELING_RUBY_GH_SOURCE} \
           --output=type=docker \
           --tag ${DOCKER_IMAGE_ORG_AND_NAME}:${TAG} \

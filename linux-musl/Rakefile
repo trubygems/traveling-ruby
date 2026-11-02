@@ -1,6 +1,7 @@
 IMAGE_VERSION = "4.0.0-alpine"
 
-VERSION       = File.read("../versions/VERSION.txt").strip
+# Each Ruby version is released as <ruby version>-<revision>; see versions/RUBY_REVISIONS.txt
+REVISIONS     = File.read("../versions/RUBY_REVISIONS.txt").scan(/^(\S+)\s+(\d+)/).to_h
 RUBY_VERSIONS = ENV['RUBY_VERSIONS'] ? [].push(ENV['RUBY_VERSIONS']) : File.read("../versions/RUBY_VERSIONS.txt").strip.split(/\s+/)
 ARCHITECTURES = ENV['ARCHITECTURES'] ? [].push(ENV['ARCHITECTURES']) : ["x86_64","arm64"]
 CONCURRENCY   = `./internal/cpucount.sh`.to_i
@@ -66,9 +67,10 @@ ARCHITECTURES.each do |arch|
 
 
   RUBY_VERSIONS.each do |ruby_version|
-    package = "traveling-ruby-#{VERSION}-#{ruby_version}-linux-musl-#{arch}.tar.gz"
-    package_full = "traveling-ruby-#{VERSION}-#{ruby_version}-linux-musl-#{arch}-full.tar.gz"
-    gem_dir = "traveling-ruby-gems-#{VERSION}-#{ruby_version}-linux-musl-#{arch}"
+    release = "#{ruby_version}-#{REVISIONS.fetch(ruby_version, "0")}"
+    package = "traveling-ruby-#{release}-linux-musl-#{arch}.tar.gz"
+    package_full = "traveling-ruby-#{release}-linux-musl-#{arch}-full.tar.gz"
+    gem_dir = "traveling-ruby-gems-#{release}-linux-musl-#{arch}"
 
     task :package => "package:#{ruby_version}:#{arch}"
     task :package_full => "package_full:#{ruby_version}:#{arch}"

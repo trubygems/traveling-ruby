@@ -15,7 +15,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel]
         shell: [bash, sh]
-        args: ['', '-d 20251122 -v 3.3.10']
+        args: ['', '-v 3.3.13 -r 0']
       fail-fast: false
     defaults:
       run:
@@ -40,7 +40,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        args: ['', '-d 20251122 -v 3.3.10']
+        args: ['', '-v 3.3.13 -r 0']
       fail-fast: false
     runs-on: ubuntu-latest
     container: alpine:3.22
@@ -58,7 +58,7 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, windows-11-arm]
-        args: ['', '-d 20251122 -v 3.4.7']
+        args: ['', '-v 3.4.12 -r 0']
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:

@@ -2,11 +2,11 @@ name: traveling-ruby
 description: Traveling Ruby at your fingertips
 inputs:
   ruby-version:
-    description: 'Ruby version to install, defaults to the first version built by the release'
+    description: 'Ruby version to install (e.g. 3.4.12), defaults to the newest'
     required: false
     default: ''
-  release:
-    description: 'Release date of the package to install (e.g. 20261102), defaults to the latest release'
+  revision:
+    description: 'Package revision of the Ruby version (e.g. 0), defaults to the newest'
     required: false
     default: ''
   gems:
@@ -21,5 +21,5 @@ runs:
       shell: bash
       env:
         TRAVELING_RUBY_VERSION: ${{ inputs.ruby-version }}
-        TRAVELING_RUBY_PKG_DATE: ${{ inputs.release }}
+        TRAVELING_RUBY_REVISION: ${{ inputs.revision }}
         TRAVELING_RUBY_GEM_LIST: ${{ inputs.gems }}

@@ -1,4 +1,5 @@
-VERSION       = File.read("../versions/VERSION.txt").strip
+# Each Ruby version is released as <ruby version>-<revision>; see versions/RUBY_REVISIONS.txt
+REVISIONS     = File.read("../versions/RUBY_REVISIONS.txt").scan(/^(\S+)\s+(\d+)/).to_h
 RUBY_VERSIONS = ENV['RUBY_VERSIONS'] ? [].push(ENV['RUBY_VERSIONS']) : File.read("../versions/RUBY_VERSIONS.txt").strip.split(/\s+/)
 ARCHITECTURES = ENV['ARCHITECTURES'] ? [].push(ENV['ARCHITECTURES']) : ["x86_64","x86"]
 
@@ -31,9 +32,10 @@ ARCHITECTURES.each do |arch|
 
   RUBY_VERSIONS.each do |ruby_version|
     begin
-    package = "traveling-ruby-#{VERSION}-#{ruby_version}-windows-#{arch}.tar.gz"
-    package_full = "traveling-ruby-#{VERSION}-#{ruby_version}-windows-#{arch}-full.tar.gz"
-    gem_dir = "traveling-ruby-gems-#{VERSION}-#{ruby_version}-windows-#{arch}"
+    release = "#{ruby_version}-#{REVISIONS.fetch(ruby_version, "0")}"
+    package = "traveling-ruby-#{release}-windows-#{arch}.tar.gz"
+    package_full = "traveling-ruby-#{release}-windows-#{arch}-full.tar.gz"
+    gem_dir = "traveling-ruby-gems-#{release}-windows-#{arch}"
 
     task :package => "package:#{arch}:#{ruby_version}"
     task :package_full => "package_full:#{ruby_version}:#{arch}"

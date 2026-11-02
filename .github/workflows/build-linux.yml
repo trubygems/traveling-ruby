@@ -10,9 +10,6 @@ on:
       arch:
         required: true
         type: string
-      pkg-date:
-        required: true
-        type: string
       ruby-versions:
         description: 'JSON array of Ruby versions'
         required: true

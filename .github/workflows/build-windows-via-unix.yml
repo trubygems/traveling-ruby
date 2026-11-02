@@ -3,7 +3,8 @@ name: Build Windows via unix
 on:
   workflow_call:
     inputs:
-      pkg-date:
+      revisions:
+        description: 'JSON object of Ruby version to package revision'
         required: true
         type: string
       builds:
@@ -46,7 +47,7 @@ jobs:
       - uses: actions/upload-artifact@v5
         with:
           name: via-unix-windows-${{ matrix.arch }}-${{ matrix.ruby-version }}
-          path: windows/traveling-ruby-${{ inputs.pkg-date }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch }}.tar.gz
+          path: windows/traveling-ruby-${{ matrix.ruby-version }}-${{ fromJSON(inputs.revisions)[matrix.ruby-version] }}-windows-${{ matrix.arch }}.tar.gz
 
   test:
     name: windows-via-unix ${{ matrix.arch }} ${{ matrix.ruby-version }} test
@@ -76,5 +77,5 @@ jobs:
         working-directory: windows
         run: |
           mkdir output
-          tar xzf "traveling-ruby-${{ inputs.pkg-date }}-${{ matrix.ruby-version }}-windows-${{ matrix.arch }}.tar.gz" -C output
+          tar xzf "traveling-ruby-${{ matrix.ruby-version }}-${{ fromJSON(inputs.revisions)[matrix.ruby-version] }}-windows-${{ matrix.arch }}.tar.gz" -C output
           ../shared/test-gems.sh -p windows -a "$ARCHITECTURES" output

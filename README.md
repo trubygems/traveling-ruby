@@ -6,7 +6,7 @@ Bundle one with your Ruby app and ship a single package that runs without your u
 
 ## Platforms
 
-The current release, [rel-20261102](https://github.com/trubygems/traveling-ruby/releases/tag/rel-20261102), builds Ruby 3.3.13, 3.4.12 and 4.0.9.
+Traveling Ruby builds Ruby 3.3.13, 3.4.12 and 4.0.9. Each Ruby version and target has its own release, such as [ruby-3.4.12-0-linux-x86_64](https://github.com/trubygems/traveling-ruby/releases/tag/ruby-3.4.12-0-linux-x86_64).
 
 | Platform | Package name | Architectures | Runs on |
 | --- | --- | --- | --- |
@@ -15,7 +15,7 @@ The current release, [rel-20261102](https://github.com/trubygems/traveling-ruby/
 | macOS | `macos` | x86_64, arm64 | macOS 12.2 or later |
 | Windows | `windows` | x86_64, arm64 | Windows 10 or later; arm64 needs Windows 11 and Ruby 3.4 or later |
 
-Release assets are named `traveling-ruby-<release>-<ruby>-<platform>-<arch>.tar.gz`. The `-full` packages also contain the prebuilt native extension gems, which are published one gem per tarball as well. Every release has a `SHA256SUMS` file and a build provenance attestation.
+Releases are tagged `ruby-<ruby>-<revision>-<platform>-<arch>` and hold `traveling-ruby-<ruby>-<revision>-<platform>-<arch>.tar.gz`. The revision starts at 0 and goes up only when the runtime itself is rebuilt. The `-full` packages also contain the prebuilt native extension gems, which are published one gem per tarball as well. New gem versions are added to the existing release, and older ones are never removed. Every release has a `SHA256SUMS` file, a `manifest.json` listing its runtime and gems, and a build provenance attestation.
 
 ## Quickstart
 

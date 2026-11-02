@@ -1,12 +1,16 @@
 name: Build
 
-# Builds every platform on pushes to main and on releases. Pull requests build
+# Builds every platform on pushes to main and pull requests. Pull requests build
 # every platform too, unless they carry "build:<platform>" labels, which limit
-# the build to those platforms. Run it by hand to build chosen platforms.
+# the build to those platforms. Run it by hand to build chosen platforms and
+# Ruby versions.
 #
-# The release date and Ruby versions come from versions/*.txt. A release must be
-# tagged rel-<versions/VERSION.txt>; its packages are published with a
-# SHA256SUMS file and build provenance attestations once every platform passes.
+# Ruby versions come from versions/RUBY_VERSIONS.txt and their revisions from
+# versions/RUBY_REVISIONS.txt. Pushes to main (and runs by hand with "publish")
+# publish to one release per Ruby version, revision and target, e.g.
+# ruby-3.4.12-0-linux-x86_64: the first publish creates it, later ones only add
+# packages it lacks, such as new gem versions. Bump a version's revision to
+# rebuild and release its runtime afresh.
 
 on:
   push:
@@ -16,8 +20,6 @@ on:
     branches: [ main ]
     types: [ opened, synchronize, reopened, labeled ]
     paths-ignore: [ '**.md', 'docs/**', 'doc/**' ]
-  release:
-    types: [ published ]
   workflow_dispatch:
     inputs:
       platforms:
@@ -25,6 +27,16 @@ on:
         required: false
         default: all
         type: string
+      ruby_versions:
+        description: 'Ruby versions to build: all, or any of versions/RUBY_VERSIONS.txt'
+        required: false
+        default: all
+        type: string
+      publish:
+        description: 'Publish the packages to their releases'
+        required: false
+        default: false
+        type: boolean
       rebuild_runtime:
         description: 'Rebuild the macOS runtime even if the registry has it'
         required: false
@@ -35,6 +47,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  PUBLISH: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.publish == true }}
+
 permissions:
   contents: read
 
@@ -42,11 +57,13 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     outputs:
-      pkg-date: ${{ steps.setup.outputs.pkg-date }}
+      revisions: ${{ steps.setup.outputs.revisions }}
+      publish: ${{ env.PUBLISH }}
       ruby-versions: ${{ steps.setup.outputs.ruby-versions }}
       ruby-versions-arm64: ${{ steps.setup.outputs.ruby-versions-arm64 }}
       windows-via-unix-builds: ${{ steps.setup.outputs.windows-via-unix-builds }}
       newest-ruby-version: ${{ steps.setup.outputs.newest-ruby-version }}
+      latest-ruby-version: ${{ steps.setup.outputs.latest-ruby-version }}
       linux: ${{ steps.setup.outputs.linux }}
       linux-musl: ${{ steps.setup.outputs.linux-musl }}
       macos: ${{ steps.setup.outputs.macos }}
@@ -58,8 +75,8 @@ jobs:
         run: ./scripts/ci-setup.sh && cat "$GITHUB_OUTPUT"
         env:
           EVENT: ${{ github.event_name }}
-          TAG: ${{ github.event.release.tag_name }}
           PLATFORMS: ${{ inputs.platforms }}
+          RUBY_VERSIONS: ${{ inputs.ruby_versions }}
           LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
 
   linux:
@@ -73,7 +90,6 @@ jobs:
     with:
       platform: linux
       arch: ${{ matrix.arch }}
-      pkg-date: ${{ needs.setup.outputs.pkg-date }}
       ruby-versions: ${{ needs.setup.outputs.ruby-versions }}
 
   linux-musl:
@@ -87,7 +103,6 @@ jobs:
     with:
       platform: linux-musl
       arch: ${{ matrix.arch }}
-      pkg-date: ${{ needs.setup.outputs.pkg-date }}
       ruby-versions: ${{ needs.setup.outputs.ruby-versions }}
 
   macos:
@@ -103,7 +118,6 @@ jobs:
     uses: ./.github/workflows/build-macos.yml
     with:
       arch: ${{ matrix.arch }}
-      pkg-date: ${{ needs.setup.outputs.pkg-date }}
       ruby-versions: ${{ needs.setup.outputs.ruby-versions }}
       rebuild-runtime: ${{ inputs.rebuild_runtime == true }}
 
@@ -117,7 +131,7 @@ jobs:
     uses: ./.github/workflows/build-windows.yml
     with:
       arch: ${{ matrix.arch }}
-      pkg-date: ${{ needs.setup.outputs.pkg-date }}
+      revisions: ${{ needs.setup.outputs.revisions }}
       # RubyInstaller ships arm64 builds from Ruby 3.4
       ruby-versions: ${{ matrix.arch == 'arm64' && needs.setup.outputs.ruby-versions-arm64 || needs.setup.outputs.ruby-versions }}
       newest-ruby-version: ${{ needs.setup.outputs.newest-ruby-version }}
@@ -129,20 +143,25 @@ jobs:
     if: needs.setup.outputs.windows-via-unix == 'true'
     uses: ./.github/workflows/build-windows-via-unix.yml
     with:
-      pkg-date: ${{ needs.setup.outputs.pkg-date }}
+      revisions: ${{ needs.setup.outputs.revisions }}
       builds: ${{ needs.setup.outputs.windows-via-unix-builds }}
       ruby-versions: ${{ needs.setup.outputs.ruby-versions }}
       newest-ruby-version: ${{ needs.setup.outputs.newest-ruby-version }}
 
   publish:
     needs: [ setup, linux, linux-musl, macos, windows ]
-    if: github.event_name == 'release'
+    if: ${{ !cancelled() && needs.setup.outputs.publish == 'true' && !contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-latest
+    concurrency:
+      group: publish
+      cancel-in-progress: false
     permissions:
       contents: write
       id-token: write
       attestations: write
     steps:
+      - uses: actions/checkout@v5
+
       - uses: actions/download-artifact@v5
         with:
           pattern: pkg-*
@@ -156,17 +175,13 @@ jobs:
           cat SHA256SUMS
 
       - name: Attest build provenance
+        if: github.server_url == 'https://github.com'
         uses: actions/attest-build-provenance@v3
         with:
           subject-checksums: dist/SHA256SUMS
 
-      - name: Publish archives and checksums
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.event.release.tag_name }}
-          name: 'Release ${{ github.event.release.tag_name }}'
-          generate_release_notes: true
-          body: ${{ github.event.release.body }}
-          files: |
-            dist/traveling-ruby*.tar.gz
-            dist/SHA256SUMS
+      - name: Publish to releases
+        run: ./scripts/publish-releases.sh dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEWEST_RUBY: ${{ needs.setup.outputs.latest-ruby-version }}

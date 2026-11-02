@@ -6,8 +6,8 @@ You only need this to contribute to Traveling Ruby, reproduce a release, or buil
 
 Two files drive every build:
 
-- [versions/VERSION.txt](../versions/VERSION.txt) is the release date, such as `20261102`. Packages are named after it and the release is tagged `rel-<date>`.
-- [versions/RUBY_VERSIONS.txt](../versions/RUBY_VERSIONS.txt) lists the Ruby versions, one per line. The first one is the default for `cli.sh` and the GitHub Action.
+- [versions/RUBY_VERSIONS.txt](../versions/RUBY_VERSIONS.txt) lists the Ruby versions, one per line.
+- [versions/RUBY_REVISIONS.txt](../versions/RUBY_REVISIONS.txt) gives each Ruby version its revision, such as `3.4.12 0`. Packages are named `traveling-ruby-<ruby>-<revision>-<platform>-<arch>` and published to a release tagged `ruby-<ruby>-<revision>-<platform>-<arch>`. A version missing from the file has revision 0.
 
 The native extension gems, and the versions they are pinned to, come from the Gemfiles and lockfiles in [shared/gemfiles](../shared/gemfiles). Every platform builds the same versions.
 
@@ -63,8 +63,7 @@ ARCHITECTURES=arm64 RUNTIME_REPO=ghcr.io/trubygems/traveling-ruby-runtime ./scri
 | --- | --- |
 | Push to `main` | All |
 | Pull request | All, or only those named by `build:<platform>` labels, such as `build:linux` and `build:macos` |
-| Manual run | The `platforms` input, such as `linux macos`. Tick `rebuild_runtime` to rebuild the macOS runtime even if the registry has it. |
-| Release | All except the cross-built Windows packages |
+| Manual run | The `platforms` input, such as `linux macos`, and the `ruby_versions` input, such as `3.4.12`. Tick `rebuild_runtime` to rebuild the macOS runtime even if the registry has it, and `publish` to publish what it builds. |
 
 Each platform has its own reusable workflow, called once per architecture: `build-linux.yml` (for `linux` and `linux-musl`), `build-macos.yml`, `build-windows.yml` and `build-windows-via-unix.yml`. Every Ruby version is a separate job. Changes to Markdown files and `docs/` don't trigger a build.
 
@@ -76,16 +75,25 @@ EVENT=workflow_dispatch PLATFORMS="linux macos" ./scripts/ci-setup.sh
 
 ## Releasing
 
-1. Update `versions/VERSION.txt` to the release date and `versions/RUBY_VERSIONS.txt` to the Ruby versions, newest supported first.
-2. Update the lockfiles in `shared/gemfiles` to the latest gem versions.
-3. Update the versions in [README.md](../README.md) and the docs.
-4. Open a pull request, check the builds, and merge it.
-5. Publish a GitHub release tagged `rel-<date>`, matching `VERSION.txt`. The build fails at once if the tag doesn't match.
+Every push to `main` publishes, as does a manual run with `publish` ticked. The `publish` job waits for every platform, so a failing build publishes nothing; fix it and re-run the failed jobs. It then runs [scripts/publish-releases.sh](../scripts/publish-releases.sh), which for each runtime it built:
 
-The release run builds every platform, then its `publish` job:
+- creates the release `ruby-<ruby>-<revision>-<platform>-<arch>` if it doesn't exist yet, marking the newest Ruby's `linux-x86_64` release as the latest
+- uploads only the packages and gem tarballs the release doesn't already have, so published files never change
+- rewrites the release's `SHA256SUMS` and `manifest.json` to cover everything in it
+- attests the build provenance of everything it built
 
-- uploads every package and native gem tarball to the release
-- writes and uploads `SHA256SUMS`
-- attests the build provenance of every file in `SHA256SUMS`
+GitHub allows 1000 assets per release. The script refuses to take a release past 950 and fails the job, which is the cue to bump the revision.
 
-`publish` waits for every platform, so a failing build blocks the whole release rather than publishing part of it. Fix the build and re-run the failed jobs.
+### New gem versions
+
+Update the lockfiles in `shared/gemfiles` and merge. The build reuses the existing runtimes' revisions, and publishing adds the new gem tarballs to each release next to the old ones. The `-full` package of a release stays as first published; it has the gem versions of that day.
+
+To publish one Ruby version without waiting for a merge, run the build workflow by hand with `ruby_versions` set and `publish` ticked.
+
+### A new Ruby version
+
+Add it to `versions/RUBY_VERSIONS.txt`, newest first, and to `versions/RUBY_REVISIONS.txt` at revision 0. Update the versions in [README.md](../README.md) and the docs, open a pull request, check the builds, and merge it.
+
+### Rebuilding a runtime
+
+When a runtime has to change for a Ruby version that is already published, for example for new build dependencies or a fix to the packaging, bump its revision in `versions/RUBY_REVISIONS.txt`. The next publish creates new releases for that revision, with every gem rebuilt. The old revision's releases stay as they are.

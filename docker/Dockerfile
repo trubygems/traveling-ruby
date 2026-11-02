@@ -4,8 +4,8 @@ RUN apt-get update && \
       apt-get install -y curl && \
       apt-get clean && rm -rf /var/lib/apt/lists
 
-ARG TRAVELING_RUBY_VERSION=3.4.7
-ARG TRAVELING_RUBY_PKG_DATE=20251122
+ARG TRAVELING_RUBY_VERSION=3.4.12
+ARG TRAVELING_RUBY_REVISION=0
 ARG TRAVELING_RUBY_GH_SOURCE=trubygems/traveling-ruby
 
 ENV PATH="/home/.traveling-ruby/bin:$PATH"
@@ -16,8 +16,8 @@ RUN mkdir /home/.traveling-ruby && \
       else \
             TRAVELING_RUBY_PLATFORM=linux-x86_64; \
       fi && \
-      TRAVELING_RUBY_FILENAME=traveling-ruby-${TRAVELING_RUBY_PKG_DATE}-${TRAVELING_RUBY_VERSION}-${TRAVELING_RUBY_PLATFORM} && \
-      curl -L https://github.com/${TRAVELING_RUBY_GH_SOURCE}/releases/download/rel-${TRAVELING_RUBY_PKG_DATE}/$TRAVELING_RUBY_FILENAME.tar.gz | \
+      TRAVELING_RUBY_RELEASE=${TRAVELING_RUBY_VERSION}-${TRAVELING_RUBY_REVISION}-${TRAVELING_RUBY_PLATFORM} && \
+      curl -fL https://github.com/${TRAVELING_RUBY_GH_SOURCE}/releases/download/ruby-${TRAVELING_RUBY_RELEASE}/traveling-ruby-${TRAVELING_RUBY_RELEASE}.tar.gz | \
       tar -xz -C /home/.traveling-ruby
 
 RUN ruby --version
