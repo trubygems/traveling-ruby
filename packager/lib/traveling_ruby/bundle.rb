@@ -45,7 +45,9 @@ module TravelingRuby
       while (name = queue.shift)
         next if selected.key?(name)
         variants = by_name[name] or next # bundler itself is not locked as a spec
-        spec = variants.find { |s| s.platform.to_s == "ruby" } || variants.first
+        spec = variants.find { |s| s.platform.to_s == "ruby" } or raise Error,
+          "#{name} is locked only for #{variants.map { |s| s.platform.to_s }.uniq.join(", ")}; " \
+          "add the ruby platform with: bundle lock --add-platform ruby"
         selected[name] = spec
         queue.concat(spec.dependencies.map(&:name))
       end

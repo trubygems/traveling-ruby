@@ -1,4 +1,5 @@
 require "test_helper"
+require "tmpdir"
 
 class BundleTest < Minitest::Test
   def setup
@@ -43,5 +44,28 @@ class BundleTest < Minitest::Test
     assert_equal [Gem::Platform::RUBY], parser.platforms.map(&:to_s)
     assert(parser.specs.all? { |spec| spec.platform.to_s == "ruby" })
     assert_equal 1, parser.specs.count { |spec| spec.name == "sqlite3" }
+  end
+
+  def test_explains_gems_locked_without_the_ruby_platform
+    Dir.mktmpdir do |dir|
+      File.write(File.join(dir, "Gemfile"), "source \"https://rubygems.org\"\ngem \"nokogiri\"\n")
+      File.write(File.join(dir, "Gemfile.lock"), <<~LOCK)
+        GEM
+          remote: https://rubygems.org/
+          specs:
+            nokogiri (1.19.4-x86_64-linux-gnu)
+
+        PLATFORMS
+          x86_64-linux-gnu
+
+        DEPENDENCIES
+          nokogiri
+
+        BUNDLED WITH
+          4.0.20
+      LOCK
+      error = assert_raises(TravelingRuby::Error) { TravelingRuby::Bundle.find(dir).gems("linux-x86_64") }
+      assert_match(/nokogiri is locked only for x86_64-linux-gnu; .*--add-platform ruby/, error.message)
+    end
   end
 end

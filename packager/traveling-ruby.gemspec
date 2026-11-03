@@ -4,7 +4,7 @@ Gem::Specification.new do |spec|
   spec.name = "traveling-ruby"
   spec.version = TravelingRuby::VERSION
   spec.authors = ["Yousaf Nabi"]
-  spec.summary = "Package Ruby apps with Traveling Ruby for Linux, macOS and Windows"
+  spec.summary = "truby: package Ruby apps to run on Linux, macOS and Windows with no Ruby installed"
   spec.description = <<~DESC
     Builds self-contained packages of a Ruby app for each platform Traveling Ruby
     supports: the app, its gems, the prebuilt native extensions they need and a
@@ -20,5 +20,5 @@ Gem::Specification.new do |spec|
   }
   spec.files = Dir["lib/**/*.rb", "exe/*", "README.md", "LICENSE.md"]
   spec.bindir = "exe"
-  spec.executables = ["traveling-ruby"]
+  spec.executables = ["truby", "traveling-ruby"]
 end

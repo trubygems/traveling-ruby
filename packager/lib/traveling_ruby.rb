@@ -20,9 +20,12 @@ module TravelingRuby
     target.start_with?("windows-")
   end
 
+  autoload :UI, "traveling_ruby/ui"
+  autoload :Config, "traveling_ruby/config"
   autoload :Fetcher, "traveling_ruby/fetcher"
   autoload :Release, "traveling_ruby/release"
   autoload :Bundle, "traveling_ruby/bundle"
   autoload :Launcher, "traveling_ruby/launcher"
   autoload :Packager, "traveling_ruby/packager"
+  autoload :CLI, "traveling_ruby/cli"
 end

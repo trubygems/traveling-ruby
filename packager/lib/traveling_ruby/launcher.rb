@@ -1,6 +1,7 @@
 module TravelingRuby
-  # The script at the top of a package that runs the app's entry point with the
-  # packaged Ruby and the app's bundle
+  # A script at the top of a package that runs one of its programs with the
+  # packaged Ruby and the app's bundle. The script to run is relative to lib/:
+  # app/bin/hello for the app's own, or a gem's executable in ruby/lib/ruby/gems.
   module Launcher
     module_function
 
@@ -8,11 +9,11 @@ module TravelingRuby
       TravelingRuby.windows?(target) ? "#{name}.bat" : name
     end
 
-    def render(target, entry:, gemfile: nil, ruby_opts: [])
-      TravelingRuby.windows?(target) ? bat(entry, gemfile, ruby_opts) : sh(entry, gemfile, ruby_opts)
+    def render(target, script:, gemfile: nil, ruby_opts: [])
+      TravelingRuby.windows?(target) ? bat(script, gemfile, ruby_opts) : sh(script, gemfile, ruby_opts)
     end
 
-    def sh(entry, gemfile, ruby_opts)
+    def sh(script, gemfile, ruby_opts)
       args = [*ruby_opts, *("-rbundler/setup" if gemfile)].map { |arg| "#{sh_quote(arg)} " }.join
       bundle = <<~SH if gemfile
         export BUNDLE_GEMFILE="$LIBDIR/app/#{gemfile}"
@@ -31,13 +32,13 @@ module TravelingRuby
           esac
         done
         LIBDIR=$(cd "$(dirname "$SELF")/lib" && pwd)
-        #{bundle}exec "$LIBDIR/ruby/bin/ruby" #{args}"$LIBDIR/app/#{entry}" "$@"
+        #{bundle}exec "$LIBDIR/ruby/bin/ruby" #{args}"$LIBDIR/#{script}" "$@"
       SH
     end
 
-    def bat(entry, gemfile, ruby_opts)
+    def bat(script, gemfile, ruby_opts)
       args = [*ruby_opts, *("-rbundler/setup" if gemfile)].map { |arg| "#{arg} " }.join
-      entry = entry.tr("/", "\\")
+      script = script.tr("/", "\\")
       bundle = <<~BAT if gemfile
         set "BUNDLE_GEMFILE=%LIBDIR%\\app\\#{gemfile}"
         set "BUNDLE_APP_CONFIG=%LIBDIR%\\bundle"
@@ -50,7 +51,7 @@ module TravelingRuby
         setlocal
         set "LIBDIR=%~dp0lib"
         #{bundle&.chomp}
-        "%LIBDIR%\\ruby\\bin\\ruby.bat" #{args}"%LIBDIR%\\app\\#{entry}" %*
+        "%LIBDIR%\\ruby\\bin\\ruby.bat" #{args}"%LIBDIR%\\#{script}" %*
         exit /b %ERRORLEVEL%
       BAT
     end

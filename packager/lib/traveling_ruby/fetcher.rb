@@ -10,9 +10,9 @@ module TravelingRuby
   class Fetcher
     MAX_REDIRECTS = 10
 
-    def initialize(cache_dir: self.class.default_cache_dir, log: $stderr)
+    def initialize(cache_dir: self.class.default_cache_dir, ui: UI.new)
       @cache_dir = cache_dir
-      @log = log
+      @ui = ui
     end
 
     def self.default_cache_dir
@@ -45,7 +45,7 @@ module TravelingRuby
           raise Error, "#{source} does not exist" unless File.exist?(source)
           FileUtils.cp(source, tmp)
         else
-          @log.puts "Downloading #{url}"
+          @ui.fetching(url)
           found = get(url) do |response|
             File.open(tmp, "wb") { |f| response.read_body { |chunk| f.write(chunk) } }
           end

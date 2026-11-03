@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+require_relative "../lib/traveling_ruby"
+require "traveling_ruby/cli"
+
+exit TravelingRuby::CLI.new.run(ARGV)

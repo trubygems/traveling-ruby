@@ -18,7 +18,7 @@ class ReleaseTest < Minitest::Test
       gems: [{name: "json", version: "3.1.0", file: "traveling-ruby-gems-3.4.12-1-linux-arm64-json-3.1.0.tar.gz"}]
     ))
     File.write(File.join(@dir, "RUBY_REVISIONS.txt"), "3.4.12 1\n3.3.13 0\n")
-    @fetcher = TravelingRuby::Fetcher.new(cache_dir: File.join(@dir, "cache"), log: StringIO.new)
+    @fetcher = TravelingRuby::Fetcher.new(cache_dir: File.join(@dir, "cache"), ui: TravelingRuby::UI.new(StringIO.new))
   end
 
   def teardown

@@ -7,28 +7,25 @@ module TravelingRuby
   #
   #   require "traveling_ruby/rake_task"
   #   TravelingRuby::RakeTask.new do |t|
-  #     t.entry = "bin/hello"
-  #     t.ruby_opts = ["--yjit"]
+  #     t.bins = {"hello" => "bin/hello"}
+  #     t.ruby_opts = ["-EUTF-8"]
   #   end
   #
   #   rake package               # every target
   #   rake package:linux-arm64   # one target
+  #   rake package:check         # check the app is ready to package
+  #
+  # Settings left unset come from truby.yml, when the app has one.
   class RakeTask < Rake::TaskLib
-    attr_accessor :name, :entry, :targets, :ruby, :revision, :source, :out, :app_version,
-                  :without, :ruby_opts, :strict, :prune, :archive, :cache_dir, :app_dir
+    SETTINGS = %i[name entry bins targets ruby revision runtime source out app_version without ruby_opts keep
+                  prune archive allow_missing_extensions cache_dir].freeze
+
+    attr_accessor(*SETTINGS, :app_dir, :verbose)
 
     def initialize(task_name = :package)
       super()
       @task_name = task_name
       @app_dir = Rake.application.original_dir
-      @targets = DEFAULT_TARGETS
-      @source = Release::DEFAULT_SOURCE
-      @out = "pkg"
-      @without = %w[development test]
-      @ruby_opts = []
-      @strict = false
-      @prune = true
-      @archive = true
       yield self if block_given?
       define
     end
@@ -36,23 +33,24 @@ module TravelingRuby
     private
 
     def define
-      desc "Package the app with Traveling Ruby for #{targets.join(", ")}"
-      task(@task_name) { packager(targets).run }
+      desc "Package the app with Traveling Ruby"
+      task(@task_name) { packager.run }
 
       namespace @task_name do
+        desc "Check the app is ready to package with Traveling Ruby"
+        task(:check) { packager.check or abort }
+
         TARGETS.each do |target|
           desc "Package the app with Traveling Ruby for #{target}"
-          task(target) { packager([target]).run }
+          task(target) { packager(targets: [target]).run }
         end
       end
     end
 
-    def packager(targets)
-      Packager.new(
-        app_dir: app_dir, name: name, entry: entry, targets: targets, ruby: ruby, revision: revision,
-        source: source, out: out, app_version: app_version, without: without, ruby_opts: ruby_opts,
-        strict: strict, prune: prune, archive: archive, cache_dir: cache_dir
-      )
+    def packager(**overrides)
+      settings = SETTINGS.to_h { |setting| [setting, public_send(setting)] }.compact
+      Packager.new(app_dir: app_dir, ui: UI.new(verbose: verbose == true),
+                   **Config.load(app_dir).merge(settings, overrides))
     end
   end
 end

@@ -1,5 +1,6 @@
 require "digest"
 require "fileutils"
+require "pathname"
 require "rubygems/package"
 
 module TravelingRuby
@@ -7,7 +8,7 @@ module TravelingRuby
   # a directory, and a .tar.gz of it:
   #
   #   <name>[-<app version>]-<target>/
-  #     <name>             launcher (<name>.bat on Windows)
+  #     <bin>              a launcher per program (<bin>.bat on Windows)
   #     lib/app/           the app
   #     lib/ruby/          the runtime, with the app's gems installed in it
   #     lib/bundle/config  Bundler settings for the app
@@ -17,21 +18,43 @@ module TravelingRuby
   class Packager
     PRUNE_DIRS = %w[test tests spec features benchmark doc docs example examples sample].freeze
     PRUNE_EXT_FILES = %w[*.c *.h *.o Makefile extconf.rb mkmf.log].freeze
+    RUNTIMES = %w[slim full].freeze
 
-    attr_reader :name, :targets
+    # A program to make a launcher for: a script in the app, or a gem's executable
+    Program = Struct.new(:name, :script, :spec, keyword_init: true) do
+      def gem?
+        !spec.nil?
+      end
 
-    def initialize(app_dir: ".", name: nil, entry: nil, targets: DEFAULT_TARGETS, ruby: nil, revision: nil,
-                   source: Release::DEFAULT_SOURCE, out: "pkg", app_version: nil, without: %w[development test],
-                   ruby_opts: [], strict: false, prune: true, archive: true, cache_dir: nil, log: $stderr)
+      def to_s
+        gem? ? "#{spec.name}'s #{name}" : script
+      end
+    end
+
+    # How a locked gem with a native extension fares on each target
+    Extension = Struct.new(:gem, :built, :runtime, :missing, :versions, keyword_init: true) do
+      def ok?
+        missing.empty?
+      end
+    end
+
+    attr_reader :name, :targets, :ui
+
+    def initialize(app_dir: ".", name: nil, entry: nil, bins: nil, gem_bins: nil, targets: DEFAULT_TARGETS,
+                   ruby: nil, revision: nil, runtime: "slim", source: Release::DEFAULT_SOURCE, out: "pkg",
+                   app_version: nil, without: %w[development test], ruby_opts: [], keep: [], prune: true,
+                   archive: true, allow_missing_extensions: false, cache_dir: nil, ui: UI.new)
       @app_dir = File.expand_path(app_dir)
       raise Error, "#{@app_dir} is not a directory" unless File.directory?(@app_dir)
       @name = name || File.basename(@app_dir)
-      @entry = entry || default_entry
-      raise Error, "set the entry point, the app's script to run" unless @entry
-      raise Error, "#{@entry} not found in #{@app_dir}" unless File.file?(File.join(@app_dir, @entry))
+      @bins = bins&.to_h || (entry ? {@name => entry} : {})
+      @gem_bins = gem_bins
       @targets = Array(targets)
+      raise Error, "no targets given" if @targets.empty?
       unknown = @targets - TARGETS
       raise Error, "unknown targets: #{unknown.join(", ")} (known: #{TARGETS.join(", ")})" if unknown.any?
+      @runtime = runtime.to_s
+      raise Error, "runtime must be one of #{RUNTIMES.join(", ")}, not #{@runtime}" unless RUNTIMES.include?(@runtime)
       @ruby = ruby
       @revision = revision
       @source = source
@@ -39,12 +62,14 @@ module TravelingRuby
       @app_version = app_version
       @without = without
       @ruby_opts = ruby_opts
-      @strict = strict
+      @keep = keep
       @prune = prune
       @archive = archive
-      @log = log
-      @fetcher = cache_dir ? Fetcher.new(cache_dir: cache_dir, log: log) : Fetcher.new(log: log)
+      @allow_missing_extensions = allow_missing_extensions
+      @ui = ui
+      @fetcher = cache_dir ? Fetcher.new(cache_dir: cache_dir, ui: ui) : Fetcher.new(ui: ui)
       @gem_files = {}
+      @specs = {}
     end
 
     def release
@@ -56,14 +81,115 @@ module TravelingRuby
       @bundle = Bundle.find(@app_dir, without: @without)
     end
 
+    def full?
+      @runtime == "full"
+    end
+
+    def label
+      [@name, @app_version].compact.join(" ")
+    end
+
     # Builds every target's package; returns the package directories, or the
     # archives when archiving
     def run
-      @log.puts "Packaging #{@name} with Traveling Ruby #{release}"
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      @ui.title "Packaging #{label} with Ruby #{release.ruby} (Traveling Ruby #{release}#{", full runtime" if full?})"
+      programs
+      verify_extensions
       FileUtils.mkdir_p(@out)
       results = @targets.map { |target| package(target) }
       write_checksums(results) if @archive
+      elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+      @ui.say
+      @ui.say "#{@ui.paint("Done", :green, :bold)} in #{UI.duration(elapsed)}. " \
+              "#{programs.size == 1 ? "Launcher" : "Launchers"}: #{programs.map(&:name).join(", ")}"
       results
+    end
+
+    # Checks that the app can be packaged for every target without building
+    # anything: its launchers resolve, and every native gem has an extension.
+    # Prints a report; returns whether all is well.
+    def check
+      @ui.title "Checking #{label} with Ruby #{release.ruby} (Traveling Ruby #{release}) for #{@targets.join(", ")}"
+      ok = true
+
+      @ui.say
+      @ui.say "Launchers"
+      begin
+        width = programs.map { |program| program.name.size }.max
+        programs.each { |program| @ui.done(program.name.ljust(width), program.to_s) }
+      rescue Error => e
+        @ui.failed e.message
+        ok = false
+      end
+
+      @ui.say
+      @ui.say "Gems"
+      if bundle.nil?
+        @ui.done "no Gemfile; the app uses only Ruby's own gems"
+        return ok
+      end
+      gems = @targets.flat_map { |target| bundle.gems(target) }.uniq(&:full_name)
+      @ui.done "#{gems.size} locked for the ruby platform"
+      report = extensions
+      if report.empty?
+        @ui.done "none have native extensions"
+      else
+        width = report.map { |extension| extension.gem.full_name.size }.max
+        report.each do |extension|
+          name = extension.gem.full_name.ljust(width)
+          if extension.ok?
+            where = [("built for #{targets_text(extension.built)}" if extension.built.any?),
+                     ("comes with Ruby on #{targets_text(extension.runtime)}" if extension.runtime.any?)].compact
+            @ui.done name, where.join("; ")
+          else
+            ok = false
+            @ui.failed name, "no extension built for #{targets_text(extension.missing)}"
+            @ui.hint extension_hint(extension)
+          end
+        end
+      end
+      @ui.say
+      @ui.say(ok ? @ui.paint("Ready to package.", :green, :bold) : @ui.paint("Not ready to package.", :red, :bold))
+      ok
+    end
+
+    # Native gems' extensions across the targets
+    def extensions
+      return [] unless bundle
+      @extensions ||= begin
+        by_gem = {}
+        @targets.each do |target|
+          bundle.gems(target).each do |gem|
+            next if spec(gem).extensions.empty?
+            extension = by_gem[gem.full_name] ||= Extension.new(gem: gem, built: [], runtime: [], missing: [], versions: [])
+            if release.built_versions(target, gem.name).include?(gem.version)
+              extension.built << target
+            elsif release.runtime_gems(target, full: full?).include?(gem.full_name)
+              extension.runtime << target
+            else
+              extension.missing << target
+              extension.versions |= release.built_versions(target, gem.name)
+            end
+          end
+        end
+        by_gem.values.sort_by { |extension| extension.gem.name }
+      end
+    end
+
+    # The programs to make launchers for, from bins; or, with none, the gem's
+    # executables when packaging a gem, or bin/NAME or exe/NAME
+    def programs
+      @programs ||= begin
+        bins = @bins
+        bins = gem_executables(@gem_bins).to_h { |exe| [exe, nil] } if bins.empty? && @gem_bins
+        if bins.empty?
+          entry = default_entry or raise Error,
+            "nothing to launch: add bin/#{@name} or exe/#{@name}, or name the programs with --bin or bin: in truby.yml"
+          bins = {@name => entry}
+        end
+        bins.map { |name, script| program(name, script) }
+      end
     end
 
     def package_name(target)
@@ -71,46 +197,124 @@ module TravelingRuby
     end
 
     def package(target)
-      @log.puts "#{target}:"
       dir = File.join(@out, package_name(target))
       lib = File.join(dir, "lib")
       ruby_dir = File.join(lib, "ruby")
       FileUtils.rm_rf(dir)
       FileUtils.mkdir_p(ruby_dir)
 
-      untar(release.runtime(target), ruby_dir)
+      untar(release.runtime(target, full: full?), ruby_dir)
       copy_app(File.join(lib, "app"))
-      if bundle
-        install_bundle(target, ruby_dir, lib)
-      end
-      launcher = File.join(dir, Launcher.file_name(@name, target))
+      gems = bundle ? install_bundle(target, ruby_dir, lib) : []
       gemfile = bundle && File.basename(bundle.gemfile)
-      File.write(launcher, Launcher.render(target, entry: @entry, gemfile: gemfile, ruby_opts: @ruby_opts))
-      File.chmod(0o755, launcher)
+      programs.each do |program|
+        launcher = File.join(dir, Launcher.file_name(program.name, target))
+        File.write(launcher, Launcher.render(target, script: script_path(program, ruby_dir, lib), gemfile: gemfile,
+                                                     ruby_opts: @ruby_opts))
+        File.chmod(0o755, launcher)
+      end
 
-      return dir unless @archive
-      archive = "#{dir}.tar.gz"
-      run!("tar", "-czf", archive, "-C", @out, File.basename(dir))
-      @log.puts "  #{archive}"
-      archive
+      native = gems.count { |gem| !spec(gem).extensions.empty? }
+      summary = "#{gems.size} #{gems.size == 1 ? "gem" : "gems"}#{", #{native} native" if native.positive?}"
+      result = dir
+      if @archive
+        result = "#{dir}.tar.gz"
+        run!("tar", "-czf", result, "-C", @out, File.basename(dir))
+      end
+      @ui.done target.ljust(@targets.map(&:size).max), "#{summary.ljust(18)} #{display_path(result)}" \
+                                                     "#{"  #{UI.size(File.size(result))}" if @archive}"
+      result
     end
 
     private
 
     def default_entry
-      %W[bin/#{File.basename(@app_dir)} exe/#{File.basename(@app_dir)}].find { |path| File.file?(File.join(@app_dir, path)) }
+      %W[bin/#{@name} exe/#{@name} bin/#{File.basename(@app_dir)} exe/#{File.basename(@app_dir)}]
+        .find { |path| File.file?(File.join(@app_dir, path)) }
     end
 
+    def program(name, script)
+      if script
+        raise Error, "#{name}: #{script} not found in #{@app_dir}" unless File.file?(File.join(@app_dir, script))
+        return Program.new(name: name, script: script)
+      end
+      script = %W[bin/#{name} exe/#{name} #{name}.rb #{name}].find { |path| File.file?(File.join(@app_dir, path)) }
+      return Program.new(name: name, script: script) if script
+      spec = locked_specs.find { |s| s.executables.include?(name) } or raise Error,
+        "#{name}: no bin/#{name}, exe/#{name} or #{name}.rb in the app, and no locked gem has a #{name} executable; " \
+        "give its script, as in --bin #{name}=path/to/script"
+      Program.new(name: name, script: name, spec: spec)
+    end
+
+    def gem_executables(gem_name)
+      spec = locked_specs.find { |s| s.name == gem_name } or raise Error, "#{gem_name} is not in the lockfile"
+      raise Error, "#{gem_name} has no executables; name the programs with --bin" if spec.executables.empty?
+      spec.executables
+    end
+
+    def locked_specs
+      return [] unless bundle
+      @targets.flat_map { |target| bundle.gems(target) }.uniq(&:full_name).map { |gem| spec(gem) }
+    end
+
+    # The script a launcher runs, relative to lib/
+    def script_path(program, ruby_dir, lib)
+      return "app/#{program.script}" unless program.gem?
+      spec = program.spec
+      path = File.join(gem_home(ruby_dir), "gems", spec.full_name, spec.bindir, program.name)
+      Pathname(path).relative_path_from(Pathname(lib)).to_s
+    end
+
+    def verify_extensions
+      missing = extensions.reject(&:ok?)
+      return if missing.empty?
+      missing.each do |extension|
+        @ui.send(@allow_missing_extensions ? :warn : :failed,
+                 "#{extension.gem.full_name} has a native extension that #{release} does not build for " \
+                 "#{targets_text(extension.missing)}")
+        @ui.hint extension_hint(extension)
+      end
+      return if @allow_missing_extensions
+      raise Error, "#{missing.size} native #{missing.size == 1 ? "gem has" : "gems have"} no extension for some " \
+                   "targets; pin a built version, or pass --allow-missing-extensions to package without them"
+    end
+
+    def extension_hint(extension)
+      gem = extension.gem
+      if extension.versions.any?
+        latest = extension.versions.max_by { |version| Gem::Version.new(version) }
+        "#{release} builds #{gem.name} #{extension.versions.join(", ")}: pin it with gem \"#{gem.name}\", \"#{latest}\""
+      else
+        "#{release} does not build #{gem.name}; ask for it at https://github.com/trubygems/traveling-ruby/issues"
+      end
+    end
+
+    def targets_text(list)
+      list.sort == @targets.sort && list.size > 1 ? "all targets" : list.join(", ")
+    end
+
+    def display_path(path)
+      relative = Pathname(path).relative_path_from(Pathname(Dir.pwd)).to_s
+      relative.start_with?("..") ? path : relative
+    rescue ArgumentError
+      path
+    end
+
+    # Installs the target's gems; returns them
     def install_bundle(target, ruby_dir, lib)
       gem_home = gem_home(ruby_dir)
       checksums = {}
       installed = []
-      bundle.gems(target).each do |gem|
+      gems = bundle.gems(target)
+      gems.each do |gem|
         path = gem_file(gem)
         checksums[gem.full_name] = Digest::SHA256.file(path).hexdigest
-        next if installed?(gem_home, gem.full_name)
+        if installed?(gem_home, gem.full_name)
+          @ui.detail "#{gem.full_name} (comes with Ruby)"
+          next
+        end
         install_gem(target, gem_home, path, gem)
-        installed << gem.full_name
+        installed << gem
       end
       prune(gem_home, installed) if @prune
 
@@ -124,6 +328,7 @@ module TravelingRuby
         BUNDLE_FROZEN: "true"
         BUNDLE_WITHOUT: "#{@without.join(":")}"
       YAML
+      gems
     end
 
     # The runtime's gem home, lib/ruby/gems/<Ruby compat version>
@@ -148,40 +353,35 @@ module TravelingRuby
       end
     end
 
+    def spec(gem)
+      @specs[gem.full_name] ||= Gem::Package.new(gem_file(gem)).spec
+    end
+
     def install_gem(target, gem_home, path, gem)
-      package = Gem::Package.new(path)
-      spec = package.spec
-      package.extract_files(File.join(gem_home, "gems", spec.full_name))
+      spec = spec(gem)
+      Gem::Package.new(path).extract_files(File.join(gem_home, "gems", spec.full_name))
       FileUtils.mkdir_p(File.join(gem_home, "specifications"))
       File.write(File.join(gem_home, "specifications", "#{spec.full_name}.gemspec"), spec.to_ruby_for_cache)
       if spec.extensions.empty?
-        @log.puts "  #{spec.full_name}"
+        @ui.detail spec.full_name
       elsif (extension = release.gem_extension(target, gem.name, gem.version))
         untar(extension, File.dirname(gem_home))
-        @log.puts "  #{spec.full_name} (native extension from #{release.tag(target)})"
+        @ui.detail "#{spec.full_name} (native extension from #{release.tag(target)})"
       else
-        missing_extension(target, gem)
+        @ui.detail "#{spec.full_name} (no native extension)"
       end
     end
 
-    def missing_extension(target, gem)
-      built = release.gems(target).select { |g| g["name"] == gem.name }.map { |g| g["version"] }
-      message =
-        if built.any?
-          "#{gem.full_name} has a native extension, but #{release.tag(target)} builds #{gem.name} " \
-            "#{built.join(", ")}; pin one of those, e.g. gem \"#{gem.name}\", \"#{built.last}\""
-        else
-          "#{gem.full_name} has a native extension that #{release.tag(target)} does not build; " \
-            "it will not load in the package"
-        end
-      raise Error, message if @strict
-      @log.puts "  warning: #{message}"
-    end
-
-    def prune(gem_home, full_names)
-      full_names.each do |full_name|
-        dir = File.join(gem_home, "gems", full_name)
-        PRUNE_DIRS.each { |name| FileUtils.rm_rf(File.join(dir, name)) }
+    # Removes tests, docs and extension sources from the installed gems, except
+    # what keep names: a gem, or a path in one (pact_broker/public)
+    def prune(gem_home, gems)
+      gems.each do |gem|
+        next if @keep.include?(gem.name)
+        dir = File.join(gem_home, "gems", gem.full_name)
+        kept = @keep.filter_map { |path| path.delete_prefix("#{gem.name}/") if path.start_with?("#{gem.name}/") }
+        prunable = PRUNE_DIRS.reject { |name| kept.any? { |path| path == name || path.start_with?("#{name}/") } }
+        prunable.each { |name| FileUtils.rm_rf(File.join(dir, name)) }
+        next if kept.any? { |path| path == "ext" || path.start_with?("ext/") }
         PRUNE_EXT_FILES.each { |pattern| FileUtils.rm_f(Dir.glob(File.join(dir, "ext", "**", pattern))) }
       end
     end

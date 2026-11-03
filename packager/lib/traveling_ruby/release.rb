@@ -1,4 +1,5 @@
 require "json"
+require "set"
 
 module TravelingRuby
   # One Ruby version and revision of Traveling Ruby, published as a release per
@@ -60,14 +61,37 @@ module TravelingRuby
       "ruby-#{key(target)}"
     end
 
-    # The runtime tarball, downloaded and verified
-    def runtime(target)
-      fetch(target, manifest(target).dig("runtime", "file") || "traveling-ruby-#{key(target)}.tar.gz")
+    # The runtime tarball, downloaded and verified. The full runtime keeps what
+    # the slim one leaves out, such as Ruby's headers and static libraries.
+    def runtime(target, full: false)
+      file =
+        if full
+          manifest(target).dig("runtime_full", "file") || "traveling-ruby-#{key(target)}-full.tar.gz"
+        else
+          manifest(target).dig("runtime", "file") || "traveling-ruby-#{key(target)}.tar.gz"
+        end
+      fetch(target, file)
+    end
+
+    # Full names (name-version) of the gems the runtime comes with: Ruby's
+    # default and bundled gems
+    def runtime_gems(target, full: false)
+      @runtime_gems ||= {}
+      @runtime_gems[[target, full]] ||= begin
+        listing = IO.popen(["tar", "-tzf", runtime(target, full: full)], &:read)
+        raise Error, "could not list #{File.basename(runtime(target, full: full))}" unless $?.success?
+        listing.scan(%r{/specifications/(?:default/)?([^/\n]+)\.gemspec$}).flatten.to_set
+      end
     end
 
     # Native gems built for target, as {name, version, file, sha256}
     def gems(target)
       manifest(target).fetch("gems", [])
+    end
+
+    # Versions of a native gem built for target
+    def built_versions(target, name)
+      gems(target).select { |gem| gem["name"] == name }.map { |gem| gem["version"] }
     end
 
     # The tarball of a native gem's extension, or nil when it was not built

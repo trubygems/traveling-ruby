@@ -1,58 +1,104 @@
-# traveling-ruby gem
+# truby
 
-Packages a Ruby app with [Traveling Ruby](../README.md) runtimes, so users can run it without installing Ruby. One command builds a package per platform:
+**truby** packages Ruby apps with [Traveling Ruby](../README.md), a portable Ruby, so people can run them on Linux, macOS and Windows without installing Ruby. It ships in the `traveling-ruby` gem.
+
+```console
+$ gem install traveling-ruby
+$ truby package
+Packaging hello 1.0.0 with Ruby 3.4.12 (Traveling Ruby 3.4.12-0)
+  ✓ linux-x86_64    12 gems, 2 native  pkg/hello-1.0.0-linux-x86_64.tar.gz    14.1 MB
+  ✓ linux-arm64     12 gems, 2 native  pkg/hello-1.0.0-linux-arm64.tar.gz     13.8 MB
+  ✓ macos-x86_64    12 gems, 2 native  pkg/hello-1.0.0-macos-x86_64.tar.gz    14.6 MB
+  ✓ macos-arm64     12 gems, 2 native  pkg/hello-1.0.0-macos-arm64.tar.gz     14.4 MB
+  ✓ windows-x86_64  12 gems, 2 native  pkg/hello-1.0.0-windows-x86_64.tar.gz  20.2 MB
+
+Done in 9.8s. Launcher: hello
+```
+
+Each package holds a launcher per program, the app, and a Ruby with the app's locked gems installed:
 
 ```
-pkg/hello-linux-x86_64.tar.gz
-pkg/hello-linux-arm64.tar.gz
-pkg/hello-macos-x86_64.tar.gz
-pkg/hello-macos-arm64.tar.gz
-pkg/hello-windows-x86_64.tar.gz
-pkg/SHA256SUMS
-```
-
-Each package holds a launcher, the app, and a runtime with the app's locked gems installed:
-
-```
-hello-linux-x86_64/
+hello-1.0.0-linux-x86_64/
   hello              launcher (hello.bat on Windows)
   lib/app/           the app
-  lib/ruby/          the runtime and its gems
+  lib/ruby/          Ruby and the app's gems
   lib/bundle/config  Bundler settings for the app
 ```
 
-Nothing is compiled. Gems are installed from their `ruby` platform `.gem` files, and gems with native extensions get the extensions built for the release, so you can package for every platform from any machine.
+Nothing is compiled. Gems are installed from their `ruby` platform `.gem` files, and native gems get the extensions Traveling Ruby built for the release, so you can package for every platform from any machine. `traveling-ruby` also works as the command's name.
 
-## Install
-
-```sh
-gem install traveling-ruby
-```
-
-## Package an app
-
-The app needs an entry point, `bin/<name>` or `exe/<name>` by default, and, if it uses gems, a `Gemfile.lock`. Add the `ruby` platform to the lockfile first, so it locks gems the packager can install for every target:
+## Get started
 
 ```sh
-bundle lock --add-platform ruby
-traveling-ruby package
+bundle lock --add-platform ruby   # lock gems truby can install for every target
+truby init                        # write truby.yml
+truby check                       # see that every gem works on every target
+truby package
 ```
 
-Run `traveling-ruby package --help` for every option. The common ones:
+`truby check` builds nothing. It shows each launcher and each native gem, and says what to do about a gem with no extension built for a target:
 
-| Option | Default |
-| --- | --- |
-| `--targets LIST` | `linux-x86_64,linux-arm64,macos-x86_64,macos-arm64,windows-x86_64` (`traveling-ruby targets` lists them all) |
-| `--ruby VERSION` | the latest release's Ruby |
-| `--entry PATH` | `bin/NAME` or `exe/NAME` |
-| `--name NAME` | the app directory's name |
-| `--app-version VERSION` | none; when set it goes in package names |
-| `--without GROUPS` | `development,test` |
-| `--ruby-opt OPT` | none; passed to `ruby` by the launcher, repeatable |
-| `--source URL_OR_DIR` | `https://github.com/trubygems/traveling-ruby`, or a directory of release assets |
-| `--strict` | off |
+```
+Gems
+  ✓ 65 locked for the ruby platform
+  ✓ json-3.1.0        built for all targets
+  ✗ prism-2.1.0       no extension built for all targets
+      → 3.4.12-0 builds prism 1.9.0: pin it with gem "prism", "1.9.0"
 
-Downloads are verified against each release's `SHA256SUMS` and the lockfile's `CHECKSUMS`, and cached in `~/.cache/traveling-ruby`.
+Not ready to package.
+```
+
+`truby package` stops on the same problem, since a gem without its extension fails when the app loads it. Pin a version the release builds, or pass `--allow-missing-extensions` to package without it.
+
+## truby.yml
+
+The app's packaging settings live in `truby.yml` (or `.truby.yml`), and command line options win over it:
+
+```yaml
+name: pact
+version: 2.5.0
+ruby: 3.4.12
+targets: [linux-x86_64, linux-arm64, macos-arm64, windows-x86_64]
+bin:
+  pact-broker: pact-broker.rb   # a script in the app
+  pact-mock-service:            # bin/, exe/, pact-mock-service.rb, or a gem's executable
+ruby_opts: [-EUTF-8]
+keep: [pact_broker/public]      # gem files that pruning would remove
+```
+
+| Setting | Option | Default |
+| --- | --- | --- |
+| `name` | `--name` | the app directory's name |
+| `version` | `--app-version` | none; when set it goes in package names |
+| `bin` | `--bin NAME[=SCRIPT]` | `bin/NAME` or `exe/NAME` |
+| `targets` | `--targets` | `linux-x86_64, linux-arm64, macos-x86_64, macos-arm64, windows-x86_64` (`truby targets` lists them all) |
+| `ruby` | `--ruby` | the latest release's Ruby |
+| `revision` | `--revision` | the newest release of that Ruby |
+| `runtime` | `--full` | `slim`; `full` adds Ruby's headers and static libraries |
+| `without` | `--without` | `development, test` |
+| `ruby_opts` | `--ruby-opt` | none; passed to `ruby` by each launcher |
+| `keep` | `--keep` | none; a gem, or a path in one, that pruning keeps |
+| `prune` | `--[no-]prune` | on: removes gems' tests, docs and extension sources |
+| `archive` | `--[no-]archive` | on: a `.tar.gz` per package, and `SHA256SUMS` |
+| `allow_missing_extensions` | `--allow-missing-extensions` | off |
+| `source` | `--source` | `https://github.com/trubygems/traveling-ruby`, or a directory of release assets |
+| `out` | `--out` | `pkg` |
+
+A `bin` entry with no script runs the first of `bin/NAME`, `exe/NAME`, `NAME.rb` and `NAME` in the app, or else the `NAME` executable of a locked gem, so an app can ship `rackup` or `puma` without a script of its own.
+
+Downloads are verified against each release's `SHA256SUMS` and the lockfile's `CHECKSUMS`, and cached in `~/.cache/traveling-ruby`. Pass `-v` to list each gem as it is installed.
+
+## Package a gem
+
+`truby gem` packages a gem from rubygems.org with a launcher for each of its executables:
+
+```console
+$ truby gem rubocop --targets macos-arm64,linux-x86_64
+$ ./pkg/rubocop-1.92.2-macos-arm64/rubocop --version
+1.92.2
+```
+
+Give a version as `rubocop:1.92.2`, and pick executables with `--bin`.
 
 ## Rake task
 
@@ -61,34 +107,23 @@ Downloads are verified against each release's `SHA256SUMS` and the lockfile's `C
 require "traveling_ruby/rake_task"
 
 TravelingRuby::RakeTask.new do |t|
-  t.entry = "bin/hello"
   t.app_version = "1.0.0"
 end
 ```
 
-`rake package` builds every target and `rake package:linux-arm64` builds one. The task takes the same settings as the command line options.
+`rake package` builds every target, `rake package:linux-arm64` builds one and `rake package:check` checks the app. The task reads `truby.yml`, and settings given to it win over the file.
 
-## Native extensions
+## How a launcher runs the app
 
-Each release builds a set of native gems (see the release's `manifest.json`). When the lockfile locks a native gem at a version the release did not build, the packager warns and names the versions it did build:
+A launcher runs `lib/ruby/bin/ruby -rbundler/setup` with the program's script, with `BUNDLE_GEMFILE` pointing at the app's Gemfile and any `BUNDLE_PATH` from the user's environment cleared. It follows symlinks, so you can link it onto the `PATH`.
 
-```
-warning: bcrypt-3.1.20 has a native extension, but ruby-3.4.12-0-linux-arm64 builds bcrypt 3.1.22; pin one of those, e.g. gem "bcrypt", "3.1.22"
-```
-
-The package is still made, but that gem will not load in it. Pass `--strict` to fail instead.
+The packaged lockfile locks only the `ruby` platform, with the checksums of the gems installed, so Bundler finds exactly what is in the package.
 
 Gems from git sources are not supported yet. Gems from path sources must be inside the app, and ship with it.
 
-## How the launcher runs the app
-
-The launcher runs `lib/ruby/bin/ruby -rbundler/setup lib/app/<entry>` with `BUNDLE_GEMFILE` pointing at the app's Gemfile, and with any `BUNDLE_PATH` from the user's environment cleared. It follows symlinks, so you can link it onto the `PATH`.
-
-The packaged lockfile is rewritten to lock only the `ruby` platform, with the checksums of the gems that were installed, so Bundler finds exactly what is in the package.
-
 ## YJIT
 
-`--ruby-opt --yjit` turns YJIT on in the launcher. The runtimes are not built with YJIT yet, so for now Ruby prints `warning: Ruby was built without YJIT support` and runs without it.
+`ruby_opts: [--yjit]` turns YJIT on in the launchers. The runtimes are not built with YJIT yet, so for now Ruby prints `warning: Ruby was built without YJIT support` and runs without it.
 
 ## Development
 
