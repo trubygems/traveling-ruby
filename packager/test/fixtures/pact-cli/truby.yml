@@ -1,0 +1,5 @@
+# The pact CLIs, as pact-standalone ships them
+name: pact
+ruby: 4.0.9
+revision: 0
+bin: [pact-broker, pactflow, pact-message, pact-mock-service, pact-stub-service, pact-provider-verifier]

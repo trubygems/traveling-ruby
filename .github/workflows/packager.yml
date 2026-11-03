@@ -59,7 +59,7 @@ jobs:
         os: [ ubuntu-latest, ubuntu-24.04-arm, macos-latest ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
       - uses: ruby/setup-ruby@v1

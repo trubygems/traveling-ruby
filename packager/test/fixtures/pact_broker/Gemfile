@@ -1,0 +1,12 @@
+source "https://rubygems.org"
+
+# A Pact Broker on SQLite or PostgreSQL, served by Puma
+gem "pact_broker", "2.122.0"
+# pact_broker's UI needs padrino-core, which it leaves to the app's Gemfile
+gem "padrino-core", ">= 0.16.0.pre3"
+gem "sqlite3", "2.10.2"
+gem "pg", "1.7.0"
+gem "puma", "8.0.2"
+gem "rackup"
+# Pinned for sanitize, to the nokogiri the release builds
+gem "nokogiri", "1.19.5"

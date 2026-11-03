@@ -123,7 +123,7 @@ Gems from git sources are not supported yet. Gems from path sources must be insi
 
 ## YJIT
 
-`ruby_opts: [--yjit]` turns YJIT on in the launchers. Linux runtimes are built with YJIT from the release after 3.4.12-0 and 4.0.9-0. macOS and Windows runtimes are not yet, so there Ruby prints `warning: Ruby was built without YJIT support` and runs without it.
+`ruby_opts: [--yjit]` turns YJIT on in the launchers. Linux runtimes are built with YJIT from the release after 3.4.12-0 and 4.0.9-0, and macOS runtimes from the release after that. Windows runtimes are not yet, so there Ruby prints `warning: Ruby was built without YJIT support` and runs without it.
 
 ## Development
 
@@ -131,8 +131,10 @@ Gems from git sources are not supported yet. Gems from path sources must be insi
 cd packager
 bundle install
 bundle exec rake test
-bundle exec rake test:end_to_end   # package test/fixtures/app with a real release and run it
+bundle exec rake test:end_to_end   # package the fixture apps with a real release and run them
 ```
+
+The end-to-end tests package real-world apps too: [the Pact CLI](test/fixtures/pact-cli), as pact-standalone ships it, and [a Pact Broker](test/fixtures/pact_broker) on SQLite or PostgreSQL under Puma, which the test publishes a pact to.
 
 ## Releasing
 
