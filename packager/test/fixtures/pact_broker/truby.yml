@@ -1,0 +1,6 @@
+# A Pact Broker, run with: puma config.ru
+name: pact_broker
+ruby: 4.0.9
+revision: 0
+bin: [puma]
+keep: [pact_broker/public]

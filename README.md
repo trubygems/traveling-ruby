@@ -35,6 +35,7 @@ On GitHub Actions:
 
 - [Using the packages](docs/USING.md): downloading and verifying packages, the installer, the GitHub Action and the bundled gems.
 - [Tutorial: packaging an app](docs/TUTORIAL.md): walks through the [examples repo](https://github.com/trubygems/traveling-ruby-examples), from a hello world script to a Rails app.
+- [The packager gem](packager/README.md): packages an app and its locked gems for each platform in one command.
 - [Reducing package size](docs/REDUCING_PACKAGE_SIZE.md)
 - [Building and releasing](docs/BUILDING.md): building packages yourself, CI and cutting a release.
 

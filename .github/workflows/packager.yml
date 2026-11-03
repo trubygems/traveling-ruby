@@ -1,0 +1,133 @@
+name: Packager
+
+# Tests the traveling-ruby gem (the truby command) in packager/, and publishes
+# it to rubygems.org when a gem-v<version> tag is pushed.
+#
+# Publishing uses trusted publishing: rubygems.org trusts this workflow's OIDC
+# token in place of an API key, so no secret is stored. The gem's trusted
+# publisher on rubygems.org names this repository, packager.yml and the
+# rubygems environment.
+#
+# The tag also gets a GitHub release with the gem, its checksum and a build
+# provenance attestation. It is never marked latest: cli.sh installs from
+# releases/latest, which must stay a ruby-* release.
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'gem-v*' ]
+    paths:
+      - packager/**
+      - .github/workflows/packager.yml
+  pull_request:
+    paths:
+      - packager/**
+      - .github/workflows/packager.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: packager
+
+jobs:
+  test:
+    name: test (Ruby ${{ matrix.ruby }})
+    strategy:
+      matrix:
+        ruby: [ '3.1', '3.4', '4.0' ]
+      fail-fast: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+          working-directory: packager
+      - run: bundle exec rake test
+      - run: gem build traveling-ruby.gemspec
+
+  # Packages the fixture app, which has native gems, with a real release for
+  # each runner and runs it
+  end-to-end:
+    name: end-to-end (${{ matrix.os }})
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, ubuntu-24.04-arm, macos-latest ]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+          working-directory: packager
+      - run: bundle exec rake test:end_to_end
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/gem-v')
+    needs: [ test, end-to-end ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Add required reviewers to this environment to approve each release
+    environment:
+      name: rubygems
+      url: https://rubygems.org/gems/traveling-ruby
+    permissions:
+      attestations: write
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+      - name: Check the tag matches the gem's version
+        id: version
+        run: |
+          version=$(ruby -r ./lib/traveling_ruby/version -e 'print TravelingRuby::VERSION')
+          if [ "${GITHUB_REF_NAME}" != "gem-v${version}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match the gem's version ${version}; tag gem-v${version}"
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+      - run: gem build traveling-ruby.gemspec
+      - run: sha256sum "traveling-ruby-${{ steps.version.outputs.version }}.gem" > "traveling-ruby-${{ steps.version.outputs.version }}.gem.sha256"
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: packager/traveling-ruby-${{ steps.version.outputs.version }}.gem
+      # Before the gem is pushed, so a failed push can be rerun; reruns
+      # replace the release's files
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          files=("traveling-ruby-${VERSION}.gem" "traveling-ruby-${VERSION}.gem.sha256")
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "${files[@]}" --verify-tag --latest=false \
+              --title "traveling-ruby ${VERSION} (gem)" --notes-file - <<EOF
+          The \`traveling-ruby\` gem, which packages Ruby apps with Traveling Ruby runtimes. It adds the \`truby\` and \`traveling-ruby\` commands.
+
+          \`\`\`sh
+          gem install traveling-ruby -v ${VERSION}
+          \`\`\`
+
+          Also on [rubygems.org](https://rubygems.org/gems/traveling-ruby/versions/${VERSION}). To check a downloaded gem was built by this workflow:
+
+          \`\`\`sh
+          gh attestation verify traveling-ruby-${VERSION}.gem --repo ${GITHUB_REPOSITORY}
+          \`\`\`
+          EOF
+          fi
+      # Exchanges the workflow's OIDC token for a short-lived rubygems.org API key
+      - uses: rubygems/configure-rubygems-credentials@v2.1.0
+      - run: gem push "traveling-ruby-${{ steps.version.outputs.version }}.gem"

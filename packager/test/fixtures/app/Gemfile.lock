@@ -1,0 +1,97 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    drb (2.2.3)
+    json (3.1.0)
+    mini_portile2 (2.8.9)
+    minitest (6.0.6)
+      drb (~> 2.0)
+      prism (~> 1.5)
+    nokogiri (1.19.5)
+      mini_portile2 (~> 2.8.2)
+      racc (~> 1.4)
+    nokogiri (1.19.5-aarch64-linux-gnu)
+      racc (~> 1.4)
+    nokogiri (1.19.5-aarch64-linux-musl)
+      racc (~> 1.4)
+    nokogiri (1.19.5-arm-linux-gnu)
+      racc (~> 1.4)
+    nokogiri (1.19.5-arm-linux-musl)
+      racc (~> 1.4)
+    nokogiri (1.19.5-arm64-darwin)
+      racc (~> 1.4)
+    nokogiri (1.19.5-x86_64-darwin)
+      racc (~> 1.4)
+    nokogiri (1.19.5-x86_64-linux-gnu)
+      racc (~> 1.4)
+    nokogiri (1.19.5-x86_64-linux-musl)
+      racc (~> 1.4)
+    prism (1.9.0)
+    racc (1.8.1)
+    rainbow (3.1.1)
+    sqlite3 (2.10.2)
+      mini_portile2 (~> 2.8.0)
+    sqlite3 (2.10.2-aarch64-linux-gnu)
+    sqlite3 (2.10.2-aarch64-linux-musl)
+    sqlite3 (2.10.2-arm-linux-gnu)
+    sqlite3 (2.10.2-arm-linux-musl)
+    sqlite3 (2.10.2-arm64-darwin)
+    sqlite3 (2.10.2-x86-linux-gnu)
+    sqlite3 (2.10.2-x86-linux-musl)
+    sqlite3 (2.10.2-x86_64-darwin)
+    sqlite3 (2.10.2-x86_64-linux-gnu)
+    sqlite3 (2.10.2-x86_64-linux-musl)
+
+PLATFORMS
+  aarch64-linux-gnu
+  aarch64-linux-musl
+  arm-linux-gnu
+  arm-linux-musl
+  arm64-darwin
+  ruby
+  x86-linux-gnu
+  x86-linux-musl
+  x86_64-darwin
+  x86_64-linux-gnu
+  x86_64-linux-musl
+
+DEPENDENCIES
+  json (= 3.1.0)
+  minitest
+  nokogiri (= 1.19.5)
+  rainbow
+  sqlite3 (= 2.10.2)
+  tzinfo-data
+
+CHECKSUMS
+  bundler (4.0.20) sha256=7978a8ac648767f5e635bc522445b79e80a52b907a39a36c2d8085ed6bc762ae
+  drb (2.2.3) sha256=0b00d6fdb50995fe4a45dea13663493c841112e4068656854646f418fda13373
+  json (3.1.0) sha256=3ce7ccf8fde58960177a3a756c31f292a4c1e1dedee884547096a5b0604e3bd8
+  mini_portile2 (2.8.9) sha256=0cd7c7f824e010c072e33f68bc02d85a00aeb6fce05bb4819c03dfd3c140c289
+  minitest (6.0.6) sha256=153ea36d1d987a62942382b61075745042a2b3123b1cd48f4c3675af9cc7d6f1
+  nokogiri (1.19.5) sha256=d7ff830dfbe32fa03191412d8ef9dbf0d2db77bc4587e683dc38ec55813c8e03
+  nokogiri (1.19.5-aarch64-linux-gnu) sha256=c3d2685cc9788549cdfb23edc4684cfcc2dd390ddebf7a0170ba891445f8d3bd
+  nokogiri (1.19.5-aarch64-linux-musl) sha256=2aab3d04c430c9b9f6c46f7eddc1e341d1eb78f9070604505452092c237e7eee
+  nokogiri (1.19.5-arm-linux-gnu) sha256=a106d91b32a20142934b21e717060b8dbd10629fa0a41f15d153e89f58abf27f
+  nokogiri (1.19.5-arm-linux-musl) sha256=3445a8932e5c6bbb5f2caf7995be1c899e8b83cdfd51e79ae9e1c89f8606d967
+  nokogiri (1.19.5-arm64-darwin) sha256=2d0baa8f8234c442f0190133da87c9a2a89d48ec0b5e0c986d6047255d63a2f5
+  nokogiri (1.19.5-x86_64-darwin) sha256=90ff70e6145f4cc4b6faec427a01ef744783ba4aafa9b41e11e45a2660ba5257
+  nokogiri (1.19.5-x86_64-linux-gnu) sha256=2a32516e91fd53aa32bb281a1edbbd1b9b8440a14f43b1f22035ca504ad46091
+  nokogiri (1.19.5-x86_64-linux-musl) sha256=6c55a0c8ecb376ed19f248cf248841cc5bf41d94b3256a45af8da80fb1b24114
+  prism (1.9.0) sha256=7b530c6a9f92c24300014919c9dcbc055bf4cdf51ec30aed099b06cd6674ef85
+  racc (1.8.1) sha256=4a7f6929691dbec8b5209a0b373bc2614882b55fc5d2e447a21aaa691303d62f
+  rainbow (3.1.1) sha256=039491aa3a89f42efa1d6dec2fc4e62ede96eb6acd95e52f1ad581182b79bc6a
+  sqlite3 (2.10.2) sha256=f1ea68cd3287f8a49f39a088ac9e4bd0ef4e7f394c3d4a60dd4c7e44b0566964
+  sqlite3 (2.10.2-aarch64-linux-gnu) sha256=e9aea2c2b3476fc875dd8a89313a9a2862818519c0186bfb5b56d6f57bb08d98
+  sqlite3 (2.10.2-aarch64-linux-musl) sha256=4986fc40cdf21342362b72a941df28e95cfe0e644f3ad2532d948b157c39dbee
+  sqlite3 (2.10.2-arm-linux-gnu) sha256=762f609ef891463226b472d3df66aea84d5466ff4376d3ccf4a059718c4ce9c9
+  sqlite3 (2.10.2-arm-linux-musl) sha256=833623eaf1157b1b85d1c0830e3e8f9beb3bb95a9bec3d252f20557a50e9803a
+  sqlite3 (2.10.2-arm64-darwin) sha256=5b0d235ea037e6dcd1b8387a19d73be571917db9f93044d35741cf933a21a37d
+  sqlite3 (2.10.2-x86-linux-gnu) sha256=46a02a29e9ae452824082388be5c24fd26f133b14bdd268610c6aa9a8d924c44
+  sqlite3 (2.10.2-x86-linux-musl) sha256=38980cf01eb2e4ac1c0755964d60b3d743ccf00686798a626bab852ff4cd3d1e
+  sqlite3 (2.10.2-x86_64-darwin) sha256=fd2c67b49d313031af112e172c83ab321681a2b4996bf882eefac50be7bea08f
+  sqlite3 (2.10.2-x86_64-linux-gnu) sha256=ca92731ab464df9cae503fa1a439a549e2724f6953c8c05a7769b59366e38f15
+  sqlite3 (2.10.2-x86_64-linux-musl) sha256=b9f8fc62f3e0eb8966b41de251b492b4c8e9d1b23559beb6e150ad7f8d590941
+
+BUNDLED WITH
+  4.0.20
