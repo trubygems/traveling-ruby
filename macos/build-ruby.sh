@@ -3,6 +3,9 @@ set -e
 
 SELFDIR=`dirname "$0"`
 SELFDIR=`cd "$SELFDIR" && pwd`
+# Ruby builds YJIT when configure finds rustc, usually in ~/.cargo/bin, which
+# the reset below drops from PATH
+RUSTC=`command -v rustc || true`
 source "$SELFDIR/internal/reset_environment.sh"
 source "$SELFDIR/../shared/library.sh"
 BUNDLER_VERSION=`cat "$SELFDIR/../versions/BUNDLER_VERSION.txt"`
@@ -42,7 +45,7 @@ function create_environment_file() {
 	cat > "$FILE" <<'EOF'
 #!/bin/bash
 ROOT=`dirname "$0"`
-ROOT=`cd "$ROOT/.." && pwd`
+ROOT=`cd "$ROOT/.." && pwd -P`
 
 echo ORIG_TERMINFO=\"$TERMINFO\"
 echo ORIG_SSL_CERT_DIR=\"$SSL_CERT_DIR\"
@@ -88,7 +91,7 @@ function create_wrapper()
 #!/bin/bash
 set -e
 ROOT=`dirname "$0"`
-ROOT=`cd "$ROOT/.." && pwd`
+ROOT=`cd "$ROOT/.." && pwd -P`
 eval "`\"$ROOT/bin/ruby_environment\"`"
 EOF
 	if $IS_RUBY_SCRIPT; then
@@ -294,7 +297,8 @@ if $SETUP_SOURCE; then
 		--with-out-ext=tk,sdbm,gdbm,dbm,dl,coverage \
 		--disable-install-doc \
 		--with-openssl-dir="$RUNTIME_DIR" \
-		--build=$DEPLOY_TARGET
+		--build=$DEPLOY_TARGET \
+		${RUSTC:+RUSTC="$RUSTC"}
 	echo
 fi
 
@@ -332,6 +336,10 @@ export SSL_CERT_FILE="$TMPBUILDROOT/lib/ca-bundle.crt"
 # Dump various information about the Ruby binaries.
 RUBY_COMPAT_VERSION=`"$TMPBUILDROOT/bin/ruby" -rrbconfig -e 'puts RbConfig::CONFIG["ruby_version"]'`
 RUBY_ARCH=`"$TMPBUILDROOT/bin/ruby" -rrbconfig -e 'puts RbConfig::CONFIG["arch"]'`
+if [[ -n "$RUSTC" ]] && ! "$TMPBUILDROOT/bin/ruby" -e 'exit defined?(RubyVM::YJIT) ? 0 : 1'; then
+	echo "*** ERROR: $RUSTC was found, but Ruby was built without YJIT"
+	exit 1
+fi
 GEM_PLATFORM=`"$TMPBUILDROOT/bin/ruby" -e 'puts Gem::Platform.local.to_s'`
 GEM_EXTENSION_API_VERSION=`"$TMPBUILDROOT/bin/ruby" -e 'puts Gem.extension_api_version'`
 run mkdir info
