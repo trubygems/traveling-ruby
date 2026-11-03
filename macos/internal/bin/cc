@@ -3,11 +3,13 @@ set -e
 CC=(/usr/bin/cc)
 ARGS=()
 REGEX='(^| )-c( |$)'
+# A relocatable link (-r), as YJIT does, takes no -rpath
+RELOCATABLE='(^| )-r( |$)'
 
 if [[ "$RUNTIME_DIR" != "" && -e "$RUNTIME_DIR/bin/ccache" ]]; then
 	CC=("$RUNTIME_DIR/bin/ccache" /usr/bin/cc)
 fi
-if [[ "$@" =~ $REGEX ]]; then
+if [[ "$@" =~ $REGEX || "$@" =~ $RELOCATABLE ]]; then
 	if [[ "$RUNTIME_DIR" != "" ]]; then
 		ARGS+=("-I$RUNTIME_DIR/include")
 	fi
