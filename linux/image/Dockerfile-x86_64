@@ -1,3 +1,0 @@
-FROM --platform=linux/amd64 you54f/holy-build-box:4.0.0-amd64-centos7
-ADD . /tr_build
-RUN env ARCHITECTURE=x86_64 /tr_build/install.sh

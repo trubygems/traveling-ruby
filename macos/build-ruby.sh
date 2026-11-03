@@ -464,9 +464,12 @@ echo "Removing absolute rpaths to the runtime..."
 	BINARIES="bin/ruby $BINARIES"
 	for BINARY in $BINARIES; do
 		RPATHS=$(otool -l "$BINARY" | (grep LC_RPATH -A2 || true) | (grep ' path ' || true) | awk '{ print $2 }')
-		if grep -qF "$RUNTIME_DIR/lib" <<<"$RPATHS"; then
-			run install_name_tool -delete_rpath "$RUNTIME_DIR/lib" "$BINARY"
-		fi
+		# Every rpath into the runtime, e.g. lib/mariadb/ added by mysql2
+		for RPATH in $RPATHS; do
+			if [[ "$RPATH" == "$RUNTIME_DIR"/* ]]; then
+				run install_name_tool -delete_rpath "$RPATH" "$BINARY"
+			fi
+		done
 	done
 )
 [[ $? == 0 ]]

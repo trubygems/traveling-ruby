@@ -17,3 +17,4 @@
 ok
 output.txt
 *.tmp
+/macos/cache/

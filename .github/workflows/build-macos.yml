@@ -11,7 +11,7 @@ on:
         required: true
         type: string
       rebuild-runtime:
-        description: 'Rebuild the runtime even if the registry has it'
+        description: 'Build every unit of the runtime instead of pulling it from the registry'
         required: false
         default: false
         type: boolean
@@ -50,9 +50,12 @@ jobs:
 
       - name: Pull runtime
         if: needs.runtime.outputs.source == 'registry'
+        working-directory: macos
         run: |
           echo "${{ github.token }}" | oras login "${RUNTIME_REPO%%/*}" -u "${{ github.actor }}" --password-stdin
-          ./scripts/macos-runtime.sh pull
+          rake stash_conflicting_paths
+          rake runtime
+          rake unstash_conflicting_paths
 
       - uses: actions/download-artifact@v5
         if: needs.runtime.outputs.source == 'artifact'

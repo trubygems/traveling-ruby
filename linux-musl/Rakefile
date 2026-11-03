@@ -1,4 +1,5 @@
-IMAGE_VERSION = "4.0.0-alpine"
+IMAGE_VERSION = "5.0.0-alpine"
+PLATFORM      = "linux-musl"
 
 # Each Ruby version is released as <ruby version>-<revision>; see versions/RUBY_REVISIONS.txt
 REVISIONS     = File.read("../versions/RUBY_REVISIONS.txt").scan(/^(\S+)\s+(\d+)/).to_h
@@ -43,26 +44,11 @@ end
 ARCHITECTURES.each do |arch|
   task :image => "image:#{arch}"
   
-  desc "Build the #{arch} Docker image"
+  desc "Build the #{arch} Docker image (from ../image, see docker-bake.hcl)"
   task "image:#{arch}" do
-    IMAGE_FILE = "image/Dockerfile-#{arch}"
-    puts "Building Docker image for #{arch} from #{IMAGE_FILE}"
-    sh "docker build --pull" \
-      " -t you54f/traveling-ruby-builder-#{arch}:#{IMAGE_VERSION}" \
-      " -f #{IMAGE_FILE} image"
-  end
-
-  desc "Open a shell for testing building the #{arch} Docker image"
-  task "image:buildtest:#{arch}" do
-    File.read("image/Dockerfile-#{arch}") =~ /FROM (.+)/
-    base_image = $1.split(" ")[1]
-    platform = $1.split(" ").first
-    puts "base_image: #{base_image}"
-    puts "platform: #{platform}"
-    sh "docker", "run", "-ti", "--rm",
-      "-v", File.absolute_path("image") + ":/tr_build:ro",
-      "-v", File.absolute_path("image") + ":/host:delegated",
-      base_image, "bash"
+    sh({ "IMAGE_VERSION" => IMAGE_VERSION.sub(/-[^-]+\z/, "") }, "docker", "buildx", "bake", "--load", "-f", "../image/docker-bake.hcl",
+      "--set", "*.context=../image",
+      "#{PLATFORM}-#{arch}")
   end
 
 
