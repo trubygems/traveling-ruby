@@ -145,4 +145,4 @@ git tag gem-v0.1.0
 git push origin gem-v0.1.0
 ```
 
-The workflow tests the gem, checks the tag matches its version, and pushes it from the `rubygems` environment.
+The workflow tests the gem, checks the tag matches its version, and pushes it from the `rubygems` environment. It also publishes a `gem-v0.1.0` GitHub release with the gem, its SHA-256 and a build provenance attestation. The release is never marked latest, since `cli.sh` installs the latest release as a Ruby runtime.

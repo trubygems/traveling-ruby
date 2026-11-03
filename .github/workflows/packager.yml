@@ -8,8 +8,9 @@ name: Packager
 # publisher on rubygems.org names this repository, packager.yml and the
 # rubygems environment.
 #
-# The tag gets no GitHub release: cli.sh installs from releases/latest, which
-# must stay a ruby-* release.
+# The tag also gets a GitHub release with the gem, its checksum and a build
+# provenance attestation. It is never marked latest: cli.sh installs from
+# releases/latest, which must stay a ruby-* release.
 
 on:
   push:
@@ -79,7 +80,8 @@ jobs:
       name: rubygems
       url: https://rubygems.org/gems/traveling-ruby
     permissions:
-      contents: read
+      attestations: write
+      contents: write
       id-token: write
     steps:
       - uses: actions/checkout@v5
@@ -96,6 +98,36 @@ jobs:
           fi
           echo "version=${version}" >> "$GITHUB_OUTPUT"
       - run: gem build traveling-ruby.gemspec
+      - run: sha256sum "traveling-ruby-${{ steps.version.outputs.version }}.gem" > "traveling-ruby-${{ steps.version.outputs.version }}.gem.sha256"
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: packager/traveling-ruby-${{ steps.version.outputs.version }}.gem
+      # Before the gem is pushed, so a failed push can be rerun; reruns
+      # replace the release's files
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          files=("traveling-ruby-${VERSION}.gem" "traveling-ruby-${VERSION}.gem.sha256")
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "${files[@]}" --verify-tag --latest=false \
+              --title "traveling-ruby ${VERSION} (gem)" --notes-file - <<EOF
+          The \`traveling-ruby\` gem, which packages Ruby apps with Traveling Ruby runtimes. It adds the \`truby\` and \`traveling-ruby\` commands.
+
+          \`\`\`sh
+          gem install traveling-ruby -v ${VERSION}
+          \`\`\`
+
+          Also on [rubygems.org](https://rubygems.org/gems/traveling-ruby/versions/${VERSION}). To check a downloaded gem was built by this workflow:
+
+          \`\`\`sh
+          gh attestation verify traveling-ruby-${VERSION}.gem --repo ${GITHUB_REPOSITORY}
+          \`\`\`
+          EOF
+          fi
       # Exchanges the workflow's OIDC token for a short-lived rubygems.org API key
       - uses: rubygems/configure-rubygems-credentials@v2.1.0
       - run: gem push "traveling-ruby-${{ steps.version.outputs.version }}.gem"
