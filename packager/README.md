@@ -115,7 +115,7 @@ end
 
 ## How a launcher runs the app
 
-A launcher runs `lib/ruby/bin/ruby -rbundler/setup` with the program's script, with `BUNDLE_GEMFILE` pointing at the app's Gemfile and any `BUNDLE_PATH` from the user's environment cleared. It follows symlinks, so you can link it onto the `PATH`.
+A launcher runs `lib/ruby/bin/ruby -rbundler/setup` with the program's script, with `BUNDLE_GEMFILE` pointing at the app's Gemfile and any `BUNDLE_PATH` from the user's environment cleared. It follows symlinks, to itself or to a directory above it, so you can link it onto the `PATH`.
 
 The packaged lockfile locks only the `ruby` platform, with the checksums of the gems installed, so Bundler finds exactly what is in the package.
 
@@ -123,7 +123,7 @@ Gems from git sources are not supported yet. Gems from path sources must be insi
 
 ## YJIT
 
-`ruby_opts: [--yjit]` turns YJIT on in the launchers. The runtimes are not built with YJIT yet, so for now Ruby prints `warning: Ruby was built without YJIT support` and runs without it.
+`ruby_opts: [--yjit]` turns YJIT on in the launchers. Linux runtimes are built with YJIT from the release after 3.4.12-0 and 4.0.9-0. macOS and Windows runtimes are not yet, so there Ruby prints `warning: Ruby was built without YJIT support` and runs without it.
 
 ## Development
 
@@ -131,6 +131,7 @@ Gems from git sources are not supported yet. Gems from path sources must be insi
 cd packager
 bundle install
 bundle exec rake test
+bundle exec rake test:end_to_end   # package test/fixtures/app with a real release and run it
 ```
 
 ## Releasing

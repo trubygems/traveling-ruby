@@ -8,12 +8,12 @@ class BundleTest < Minitest::Test
 
   def test_selects_locked_gems_outside_development_and_test
     names = @bundle.gems("linux-arm64").map(&:full_name)
-    assert_equal %w[json-3.1.0 mini_portile2-2.8.9 nokogiri-1.19.4 racc-1.8.1 rainbow-3.1.1 sqlite3-2.10.2], names
+    assert_equal %w[json-3.1.0 mini_portile2-2.8.9 nokogiri-1.19.5 racc-1.8.1 rainbow-3.1.1 sqlite3-2.10.2], names
   end
 
   def test_uses_ruby_platform_checksums_and_remotes
     nokogiri = @bundle.gems("linux-arm64").find { |gem| gem.name == "nokogiri" }
-    assert_equal "50c951611c92bca05c51411aef45f1cbc50f2821c4802758c5c6d34696533ab5", nokogiri.checksum
+    assert_equal "d7ff830dfbe32fa03191412d8ef9dbf0d2db77bc4587e683dc38ec55813c8e03", nokogiri.checksum
     assert_equal ["https://rubygems.org/"], nokogiri.remotes
   end
 
@@ -32,9 +32,9 @@ class BundleTest < Minitest::Test
     lockfile = @bundle.packaged_lockfile(checksums: {"rainbow-3.1.1" => "a" * 64}, bundler_version: "9.9.9")
     refute_match(/-(aarch64|x86_64|arm64|arm|x86)-/, lockfile)
     assert_match(/^PLATFORMS\n  ruby\n\n/, lockfile)
-    assert_match(/^    nokogiri \(1\.19\.4\)\n      mini_portile2 \(~> 2\.8\.2\)\n      racc \(~> 1\.4\)\n    prism/, lockfile)
+    assert_match(/^    nokogiri \(1\.19\.5\)\n      mini_portile2 \(~> 2\.8\.2\)\n      racc \(~> 1\.4\)\n    prism/, lockfile)
     assert_includes lockfile, "  rainbow (3.1.1) sha256=#{"a" * 64}\n"
-    assert_includes lockfile, "  nokogiri (1.19.4) sha256=50c951611c92bca05c51411aef45f1cbc50f2821c4802758c5c6d34696533ab5\n"
+    assert_includes lockfile, "  nokogiri (1.19.5) sha256=d7ff830dfbe32fa03191412d8ef9dbf0d2db77bc4587e683dc38ec55813c8e03\n"
     assert_match(/^BUNDLED WITH\n  9\.9\.9\n\z/, lockfile)
   end
 

@@ -1,2 +1,24 @@
 #!/usr/bin/env ruby
-puts "hi"
+# Loads a gem of each kind, so a packaged app shows they all work: nokogiri and
+# sqlite3 have native extensions, json is also a default gem (the locked one
+# must win), and rainbow is plain Ruby
+require "json"
+require "nokogiri"
+require "sqlite3"
+require "rainbow"
+
+names = Nokogiri::HTML("<ul><li>sqlite3</li><li>nokogiri</li></ul>").css("li").map(&:text)
+db = SQLite3::Database.new(":memory:")
+db.execute "CREATE TABLE gems (name TEXT)"
+names.each { |name| db.execute "INSERT INTO gems VALUES (?)", [name] }
+
+puts JSON.generate(
+  ruby: RUBY_VERSION,
+  json: JSON::VERSION,
+  nokogiri: Nokogiri::VERSION,
+  sqlite3: SQLite3::VERSION,
+  rainbow: Rainbow("ok").to_s,
+  rows: db.execute("SELECT name FROM gems ORDER BY name").flatten,
+  args: ARGV,
+  yjit: defined?(RubyVM::YJIT) ? RubyVM::YJIT.enabled? : nil
+)

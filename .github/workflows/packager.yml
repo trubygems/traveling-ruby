@@ -50,9 +50,28 @@ jobs:
       - run: bundle exec rake test
       - run: gem build traveling-ruby.gemspec
 
+  # Packages the fixture app, which has native gems, with a real release for
+  # each runner and runs it
+  end-to-end:
+    name: end-to-end (${{ matrix.os }})
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, ubuntu-24.04-arm, macos-latest ]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+          working-directory: packager
+      - run: bundle exec rake test:end_to_end
+
   publish:
     if: startsWith(github.ref, 'refs/tags/gem-v')
-    needs: test
+    needs: [ test, end-to-end ]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # Add required reviewers to this environment to approve each release

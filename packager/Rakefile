@@ -5,4 +5,12 @@ Rake::TestTask.new do |t|
   t.test_files = FileList["test/**/*_test.rb"]
 end
 
+namespace :test do
+  desc "Package the fixture app with a real release for this machine and run it"
+  task :end_to_end do
+    ENV["TRUBY_END_TO_END"] = "1"
+    ruby "-Ilib", "-Itest", "test/end_to_end_test.rb"
+  end
+end
+
 task default: :test

@@ -31,7 +31,9 @@ module TravelingRuby
             *) SELF="$(dirname "$SELF")/$LINK" ;;
           esac
         done
-        LIBDIR=$(cd "$(dirname "$SELF")/lib" && pwd)
+        # The physical path: Ruby resolves its own files through symlinks, and
+        # its load path must name them the same way
+        LIBDIR=$(cd "$(dirname "$SELF")/lib" && pwd -P)
         #{bundle}exec "$LIBDIR/ruby/bin/ruby" #{args}"$LIBDIR/#{script}" "$@"
       SH
     end
