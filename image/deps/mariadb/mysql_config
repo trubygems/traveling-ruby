@@ -1,0 +1,14 @@
+#!/bin/sh
+# mysql_config for the mysql2 gem: mariadb_config, but --libs also lists the
+# system libraries that the static client library needs. mariadb_config lists
+# OpenSSL as -l/path/to/libssl.a, which the linker rejects, so those become -lssl.
+dir=$(cd "$(dirname "$0")" && pwd)
+case "$1" in
+--libs|--libs_r)
+	libs_sys=$("$dir/mariadb_config" --libs_sys | sed -E 's|-l/[^ ]*/lib([^ /]+)\.a|-l\1|g')
+	echo "$("$dir/mariadb_config" --libs) $libs_sys"
+	;;
+*)
+	exec "$dir/mariadb_config" "$@"
+	;;
+esac

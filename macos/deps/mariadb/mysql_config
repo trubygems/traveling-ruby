@@ -1,0 +1,12 @@
+#!/bin/sh
+# mysql_config for the mysql2 gem: mariadb_config, but --libs also lists the
+# system libraries that the static client library needs
+dir=$(cd "$(dirname "$0")" && pwd)
+case "$1" in
+--libs|--libs_r)
+	echo "$("$dir/mariadb_config" --libs) $("$dir/mariadb_config" --libs_sys)"
+	;;
+*)
+	exec "$dir/mariadb_config" "$@"
+	;;
+esac

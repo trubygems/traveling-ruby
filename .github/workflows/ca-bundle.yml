@@ -1,0 +1,50 @@
+name: CA bundle
+
+# Checks curl's extract of the Mozilla CA store every week and opens a pull
+# request when shared/ca-bundle.crt is out of date. curl regenerates the
+# extract whenever Mozilla adds, removes or distrusts a root.
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Update CA bundle
+        id: update
+        run: |
+          {
+            echo 'summary<<EOF'
+            ./scripts/update-ca-bundle.sh
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: peter-evans/create-pull-request@v7
+        id: pr
+        with:
+          branch: update-ca-bundle
+          commit-message: Update CA bundle from the Mozilla CA store
+          title: Update CA bundle from the Mozilla CA store
+          body: |
+            Updates `shared/ca-bundle.crt` from https://curl.se/ca/cacert.pem.
+
+            Mozilla CA store as of ${{ steps.update.outputs.summary }}
+          delete-branch: true
+
+      # Pull requests opened with GITHUB_TOKEN do not start other workflows,
+      # but GITHUB_TOKEN can dispatch them
+      - name: Build
+        if: steps.pr.outputs.pull-request-operation == 'created' || steps.pr.outputs.pull-request-operation == 'updated'
+        run: gh workflow run build.yml --ref update-ca-bundle
+        env:
+          GH_TOKEN: ${{ github.token }}

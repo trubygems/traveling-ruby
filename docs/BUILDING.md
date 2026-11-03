@@ -24,16 +24,16 @@ RUBY_VERSIONS=3.4.12 ARCHITECTURES=arm64 rake
 
 | Platform | Builds on | Notes |
 | --- | --- | --- |
-| `linux`, `linux-musl` | Any machine with Docker | Builds inside the `you54f/traveling-ruby-builder-<arch>` images. See [linux/README.md](../linux/README.md). |
+| `linux`, `linux-musl` | Any machine with Docker | Builds inside the `ghcr.io/trubygems/traveling-ruby-builder-<arch>` images. See [linux/README.md](../linux/README.md). |
 | `macos` | macOS with the Xcode command line tools | Builds a runtime of the libraries the gems need, then Ruby. Cross-building x86_64 on arm64 needs Rosetta. See [macos/README.md](../macos/README.md). |
 | `windows` | Windows, with RubyInstaller and MSYS2 | Repackages a RubyInstaller build. [build-windows.yml](../.github/workflows/build-windows.yml) shows the steps. |
 | `windows`, without native gems | macOS or Linux with 7-Zip | `cd windows && rake` downloads RubyInstaller and repacks it. CI tests these packages but never releases them. |
 
 ## The Docker images
 
-The Linux builds run in `you54f/traveling-ruby-builder-x86_64` and `you54f/traveling-ruby-builder-arm64`, tagged with `IMAGE_VERSION` from the platform's `Rakefile`: `4.0.0-centos7` for `linux` and `4.0.0-alpine` for `linux-musl`. Build one locally with `rake image`.
+The Linux builds run in `ghcr.io/trubygems/traveling-ruby-builder-x86_64` and `ghcr.io/trubygems/traveling-ruby-builder-arm64`, built from `image/`. Their tags are `centos7-<hash>` for `linux` and `alpine-<hash>` for `linux-musl`, where `<hash>` is the git tree hash of `image/`, so any change there gives a new tag and each commit keeps using the image it was built with. `scripts/builder-image.sh name` prints the tag for a checkout. `rake image` builds it locally, unless it is published.
 
-To publish new images, change `IMAGE_VERSION`, then run the [images workflow](../.github/workflows/images.yml) from the Actions tab. It builds and pushes both architectures for the platform you choose.
+CI pushes the images when their tag is not published yet, from pushes and from pull requests in this repository. Pull requests from forks build them into the Actions cache instead.
 
 ## The macOS runtime
 

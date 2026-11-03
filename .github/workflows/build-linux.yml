@@ -15,9 +15,41 @@ on:
         required: true
         type: string
 
+env:
+  # The builder images, tagged with the hash of image/ (see scripts/builder-image.sh)
+  BUILDER_REPO: ghcr.io/${{ github.repository }}-builder
+  # Forks' pull requests cannot push, so they only build into the Actions cache
+  CAN_PUSH: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+
 jobs:
+  # Builds and pushes the builder image when its tag is not published yet (a
+  # change in image/), so the build jobs below only pull it
+  image:
+    name: ${{ inputs.platform }} ${{ inputs.arch }} image
+    runs-on: ${{ inputs.arch == 'arm64' && 'ubuntu-22.04-arm' || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Lets buildx use the Actions cache
+      - uses: crazy-max/ghaction-github-runtime@v3
+
+      - name: Build image
+        run: ./scripts/builder-image.sh ${{ env.CAN_PUSH == 'true' && 'push' || 'cache' }}
+        env:
+          PLATFORM: ${{ inputs.platform }}
+          ARCH: ${{ inputs.arch }}
+
   build:
     name: ${{ inputs.platform }} ${{ inputs.arch }} ${{ matrix.ruby-version }}
+    needs: image
     strategy:
       matrix:
         ruby-version: ${{ fromJSON(inputs.ruby-versions) }}
@@ -32,6 +64,23 @@ jobs:
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby-version }}
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: crazy-max/ghaction-github-runtime@v3
+
+      # Builds the image from the Actions cache when it is not published
+      - name: Load image
+        run: ./scripts/builder-image.sh load
+        env:
+          PLATFORM: ${{ inputs.platform }}
+          ARCH: ${{ inputs.arch }}
 
       - name: Build
         working-directory: ${{ inputs.platform }}

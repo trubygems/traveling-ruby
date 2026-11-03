@@ -1,0 +1,55 @@
+#!/bin/bash
+# Builds one dependency of the builder image from its recipe, deps/NAME.sh,
+# and copies the files it installed into /out, so that a Dockerfile stage per
+# dependency can hand just those files to the stages that need them.
+#
+# A recipe sets NAME, VERSION, URL and SHA256 and defines build(), which runs
+# in an empty directory with the Holy Build Box environment for $PREFIX
+# (/hbb_shlib) activated, and installs into $PREFIX. Files in deps/NAME/ are
+# part of the recipe.
+#
+# Usage: build-dep NAME
+set -eo pipefail
+
+DEPS_DIR=/deps
+PREFIX=/hbb_shlib
+CONCURRENCY=${CONCURRENCY:-$(nproc)}
+
+function run()
+{
+	echo "+ $*"
+	"$@"
+}
+
+# Downloads $URL, checks it against $SHA256 and extracts it into the current
+# directory
+function fetch()
+{
+	local file="${URL##*/}"
+	run curl --fail -sSL --retry 3 -o "$file" "$URL"
+	echo "$SHA256  $file" | sha256sum -c -
+	run tar -xf "$file"
+	run rm "$file"
+}
+
+# shellcheck disable=SC1090
+source "$DEPS_DIR/$1.sh"
+RECIPE_DIR="$DEPS_DIR/$NAME"
+# shellcheck disable=SC1091
+source "$PREFIX/activate"
+
+marker=$(mktemp)
+work=$(mktemp -d)
+cd "$work"
+build
+cd /
+rm -rf "$work"
+
+# Everything created or changed since the marker. The change time, unlike the
+# modification time, cannot be preserved by the install, so this also finds
+# files installed with cp -p.
+rm -rf "${PREFIX:?}/share/doc" "$PREFIX/share/man"
+mkdir -p /out
+find "${PREFIX#/}" hbb \( -type f -o -type l \) -cnewer "$marker" | tar -cf - -T - | tar -xf - -C /out
+rm "$marker"
+echo "$NAME $VERSION: $(find /out -type f | wc -l) files, $(du -sh /out | cut -f1)"

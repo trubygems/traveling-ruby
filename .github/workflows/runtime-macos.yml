@@ -1,10 +1,11 @@
 name: macOS runtime
 
-# Builds the macOS runtime (the libraries the gems link against) once and stores
-# it in the container registry, tagged by scripts/macos-runtime.sh with a hash
-# of the scripts that build it. Every macOS build pulls it from there, so
-# branches, pull requests and releases share one build until those scripts or
-# the major Xcode version change.
+# Sets up the macOS runtime (the build tools and libraries Ruby and the gems
+# link against). Each unit of it (one per recipe in macos/deps) is stored in the
+# container registry under a key that macos/setup-runtime.sh computes from the
+# unit's recipe, the toolchain and the units it is built against, so a change to
+# one recipe rebuilds only that unit and the units that depend on it. The build
+# jobs then pull every unit from the registry.
 #
 # Pull requests from forks can't push to the registry, so they get the runtime
 # as a workflow artifact instead.
@@ -16,7 +17,7 @@ on:
         required: true
         type: string
       rebuild:
-        description: 'Rebuild and push the runtime even if the registry has it'
+        description: 'Build every unit of the runtime instead of pulling it from the registry'
         required: false
         default: false
         type: boolean
@@ -33,7 +34,7 @@ on:
         type: choice
         options: [ all, x86_64, arm64 ]
       rebuild:
-        description: 'Rebuild and push the runtime even if the registry has it'
+        description: 'Build every unit of the runtime instead of pulling it from the registry'
         required: false
         default: false
         type: boolean
@@ -66,32 +67,29 @@ jobs:
       - name: Log in to the registry
         run: echo "${{ github.token }}" | oras login "${RUNTIME_REPO%%/*}" -u "${{ github.actor }}" --password-stdin
 
-      - name: Look up runtime
-        id: lookup
-        run: |
-          echo "Runtime: $RUNTIME_REPO:$(./scripts/macos-runtime.sh tag)"
-          if [ "${{ inputs.rebuild }}" != "true" ] && ./scripts/macos-runtime.sh exists; then
-            echo "found=true" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Cache source downloads
+        uses: actions/cache@v4
+        with:
+          path: macos/cache
+          key: macos-sources-${{ hashFiles('macos/deps/*.sh') }}
+          restore-keys: macos-sources-
 
-      - name: Build runtime
-        if: steps.lookup.outputs.found != 'true'
+      - name: Set up runtime
         working-directory: macos
+        env:
+          RUNTIME_PULL: ${{ !inputs.rebuild }}
+          RUNTIME_PUSH: ${{ env.CAN_PUSH }}
         run: |
           rake stash_conflicting_paths
           rake runtime
           rake unstash_conflicting_paths
 
-      - name: Push runtime
-        if: steps.lookup.outputs.found != 'true' && env.CAN_PUSH == 'true'
-        run: ./scripts/macos-runtime.sh push
-
       - name: Pack runtime
-        if: steps.lookup.outputs.found != 'true' && env.CAN_PUSH != 'true'
+        if: env.CAN_PUSH != 'true'
         run: tar -C macos -czf runtime.tar.gz --exclude 'runtime/ccache/*' --exclude 'runtime/ruby-*.tar.gz' runtime
 
       - uses: actions/upload-artifact@v5
-        if: steps.lookup.outputs.found != 'true' && env.CAN_PUSH != 'true'
+        if: env.CAN_PUSH != 'true'
         with:
           name: runtime-macos-${{ matrix.arch }}
           path: runtime.tar.gz
@@ -99,4 +97,4 @@ jobs:
 
       - name: Result
         id: result
-        run: echo "source=${{ (steps.lookup.outputs.found == 'true' || env.CAN_PUSH == 'true') && 'registry' || 'artifact' }}" >> "$GITHUB_OUTPUT"
+        run: echo "source=${{ env.CAN_PUSH == 'true' && 'registry' || 'artifact' }}" >> "$GITHUB_OUTPUT"

@@ -2,32 +2,10 @@
 
 set -e
 
-XCODEPATH=$(xcode-select -p)
-if [[ "$XCODEPATH" == "/Library/Developer/CommandLineTools" ]]; then
-  XCODEPATH="$XCODEPATH/SDKs/MacOSX.sdk"
-elif [[ "$XCODEPATH" == "/Applications/Xcode.app/Contents/Developer" ]]; then
-  XCODEPATH="$XCODEPATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-elif [[ "$XCODEPATH" == "/Applications/Xcode_14.2.app/Contents/Developer" ]]; then
-  XCODEPATH="$XCODEPATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-elif [[ "$XCODEPATH" == "/Applications/Xcode_14.3.1.app/Contents/Developer" ]]; then
-  XCODEPATH="$XCODEPATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-elif [[ "$XCODEPATH" == "/Applications/Xcode_15.2.app/Contents/Developer" ]]; then
-  XCODEPATH="$XCODEPATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-elif [[ "$XCODEPATH" == "/Applications/Xcode_15.4.app/Contents/Developer" ]]; then
-  XCODEPATH="$XCODEPATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-elif [[ "$XCODEPATH" == "/Applications/Xcode_16.0.app/Contents/Developer" ]]; then
-  XCODEPATH="$XCODEPATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-elif [[ "$XCODEPATH" == "/Applications/Xcode_16.1.app/Contents/Developer" ]]; then
-  XCODEPATH="$XCODEPATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-elif [[ "$XCODEPATH" == "/Applications/Xcode_16.2.0.app/Contents/Developer" ]]; then
-  XCODEPATH="$XCODEPATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-elif [[ "$XCODEPATH" == "/Applications/Xcode_16.4.app/Contents/Developer" ]]; then
-  XCODEPATH="$XCODEPATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-elif [[ "$XCODEPATH" == "/Applications/Xcode_16.app/Contents/Developer" ]]; then
-  XCODEPATH="$XCODEPATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-else
-  echo "*** ERROR: unknown developer path \"$XCODEPATH\""
-  exit 1
+if ! xcrun --show-sdk-path > /dev/null; then
+	echo "*** ERROR: no macOS SDK found. Install Xcode or the Command Line Tools" \
+		"and select it with xcode-select." >&2
+	exit 1
 fi
 
 if [[ -e /usr/local/include ]]; then

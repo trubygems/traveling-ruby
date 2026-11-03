@@ -281,7 +281,7 @@ if [[ "$GEMFILE" != "" ]]; then
 	# Run bundle install for each Gemfile.
 	for GEMFILE in "${GEMFILES[@]}"; do
 		run cp "$GEMFILE" ./
-		if [[ -e "$GEMFILE.lock.win" ]] && [[ "$ARCHITECTURE" == "x86_64" ]]; then
+		if [[ -e "$GEMFILE.lock.win" ]]; then
 			run cp "$GEMFILE.lock.win" ./Gemfile.lock
 		elif [[ -e "$GEMFILE.lock" ]]; then
 			run cp "$GEMFILE.lock" ./Gemfile.lock
