@@ -5,7 +5,7 @@
 ```console
 $ gem install traveling-ruby
 $ truby package
-Packaging hello 1.0.0 with Ruby 3.4.12 (Traveling Ruby 3.4.12-0)
+Packaging hello 1.0.0 with Ruby 3.4.12 (Traveling Ruby 3.4.12-1)
   ✓ linux-x86_64    12 gems, 2 native  pkg/hello-1.0.0-linux-x86_64.tar.gz    14.1 MB
   ✓ linux-arm64     12 gems, 2 native  pkg/hello-1.0.0-linux-arm64.tar.gz     13.8 MB
   ✓ macos-x86_64    12 gems, 2 native  pkg/hello-1.0.0-macos-x86_64.tar.gz    14.6 MB
@@ -43,7 +43,7 @@ Gems
   ✓ 65 locked for the ruby platform
   ✓ json-3.1.0        built for all targets
   ✗ prism-2.1.0       no extension built for all targets
-      → 3.4.12-0 builds prism 1.9.0: pin it with gem "prism", "1.9.0"
+      → 3.4.12-1 builds prism 1.9.0: pin it with gem "prism", "1.9.0"
 
 Not ready to package.
 ```
@@ -123,7 +123,7 @@ Gems from git sources are not supported yet. Gems from path sources must be insi
 
 ## YJIT
 
-`ruby_opts: [--yjit]` turns YJIT on in the launchers. Linux runtimes are built with YJIT from the release after 3.4.12-0 and 4.0.9-0, and macOS runtimes from the release after that. Windows runtimes are not yet, so there Ruby prints `warning: Ruby was built without YJIT support` and runs without it.
+`ruby_opts: [--yjit]` turns YJIT on in the launchers. Linux and macOS runtimes are built with YJIT from 3.4.12-1 and 4.0.9-1. Windows runtimes are not yet, so there Ruby prints `warning: Ruby was built without YJIT support` and runs without it.
 
 ## Development
 
