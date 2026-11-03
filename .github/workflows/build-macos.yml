@@ -74,6 +74,10 @@ jobs:
           path: macos/runtime/vendor/cache
           key: macos-${{ inputs.arch }}-gems-${{ hashFiles('shared/gemfiles/*/Gemfile*') }}
 
+      # Ruby only builds YJIT when configure finds rustc
+      - name: Check rustc
+        run: rustc --version
+
       - name: Build
         working-directory: macos
         run: |

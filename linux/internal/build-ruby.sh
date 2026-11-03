@@ -20,7 +20,7 @@ function create_environment_file() {
 	cat > "$FILE" <<'EOF'
 #!/usr/bin/env sh
 ROOT=$(dirname "$0")
-ROOT=$(cd "$ROOT/.." && pwd)
+ROOT=$(cd "$ROOT/.." && pwd -P)
 
 echo ORIG_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
 echo ORIG_SSL_CERT_DIR="$SSL_CERT_DIR"
@@ -69,7 +69,7 @@ function create_wrapper()
 #!/usr/bin/env sh
 set -e
 ROOT=$(dirname "$0")
-ROOT=$(cd "$ROOT/.." && pwd)
+ROOT=$(cd "$ROOT/.." && pwd -P)
 eval "$("$ROOT/bin/ruby_environment")"
 EOF
 	if $IS_RUBY_SCRIPT; then
