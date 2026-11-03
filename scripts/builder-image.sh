@@ -1,26 +1,54 @@
 #!/bin/bash
-# Makes the Linux builder image for $PLATFORM and $ARCH available to the build
-# when its tag is not on Docker Hub yet, using the Actions cache that the
-# Builder images workflow also fills.
-#   cache: build the image into the cache
-#   load:  build the image from the cache into the local Docker
+# The Linux builder image for $PLATFORM (linux or linux-musl) and $ARCH. Its tag
+# is the hash of image/, so changing anything there gives a new image, and every
+# commit keeps pointing at the image it was built with.
+#   name:  print the image name
+#   load:  build the image into the local Docker, unless it is published
+#   cache: build the image into the Actions cache, unless it is published
+#   push:  build and push the image, unless it is published
+# In GitHub Actions the builds use the Actions cache (scope $PLATFORM-$ARCH),
+# so changing one recipe only rebuilds that dependency.
+#
+#   BUILDER_REPO   the image repository, without the -<arch> suffix
+#                  (default: ghcr.io/trubygems/traveling-ruby-builder)
 set -euo pipefail
+cd "$(dirname "$0")/.."
 
-cd "$(dirname "$0")/../image"
-version=$(sed -n 's/^IMAGE_VERSION = "\(.*\)"$/\1/p' "../$PLATFORM/Rakefile")
-image="you54f/traveling-ruby-builder-$ARCH:$version"
+case "$PLATFORM" in
+linux) distro=centos7 ;;
+linux-musl) distro=alpine ;;
+*) echo "Unknown PLATFORM: $PLATFORM" >&2; exit 1 ;;
+esac
+repo=${BUILDER_REPO:-ghcr.io/trubygems/traveling-ruby-builder}
+
+# The tree hash of image/ as it is on disk, uncommitted changes included. In a
+# clean checkout, this is git rev-parse HEAD:image.
+index=$(mktemp)
+trap 'rm -f "$index"' EXIT
+GIT_INDEX_FILE=$index git read-tree HEAD
+GIT_INDEX_FILE=$index git add -A image
+hash=$(GIT_INDEX_FILE=$index git write-tree --prefix=image/ | cut -c1-12)
+image="$repo-$ARCH:$distro-$hash"
+
+case "${1:-}" in
+name) echo "$image"; exit 0 ;;
+load) output=(--load) ;;
+cache) output=(--set "*.output=type=cacheonly") ;;
+push) output=(--push) ;;
+*) echo "Usage: $0 name|load|cache|push" >&2; exit 1 ;;
+esac
 
 if docker buildx imagetools inspect "$image" > /dev/null 2>&1; then
 	echo "$image is published"
 	exit 0
 fi
 
-case "$1" in
-cache) output=(--set "*.cache-to=type=gha,mode=max,scope=$PLATFORM-$ARCH" --set "*.output=type=cacheonly") ;;
-load) output=(--load) ;;
-*) echo "Usage: $0 cache|load" >&2; exit 1 ;;
-esac
-
-IMAGE_VERSION=${version%-*} docker buildx bake "${output[@]}" \
-	--set "*.cache-from=type=gha,scope=$PLATFORM-$ARCH" \
-	"$PLATFORM-$ARCH"
+cache=()
+if [[ -n "${ACTIONS_RUNTIME_TOKEN:-}" ]]; then
+	cache=(--set "*.cache-from=type=gha,scope=$PLATFORM-$ARCH")
+	if [[ "$1" != load ]]; then
+		cache+=(--set "*.cache-to=type=gha,mode=max,scope=$PLATFORM-$ARCH")
+	fi
+fi
+cd image
+IMAGE_REPO=$repo IMAGE_TAG=$hash docker buildx bake "${output[@]}" "${cache[@]}" "$PLATFORM-$ARCH"

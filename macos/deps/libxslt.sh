@@ -2,6 +2,8 @@
 NAME=libxslt
 VERSION=1.1.45
 URL=https://download.gnome.org/sources/libxslt/${VERSION%.*}/libxslt-$VERSION.tar.xz
+# The newest release, for scripts/update-deps.sh: <page> <regex>
+LATEST='https://download.gnome.org/sources/libxslt/cache.json libxslt-(?<version>\d+\.\d+\.\d+)\.tar\.xz'
 SHA256=9acfe68419c4d06a45c550321b3212762d92f41465062ca4ea19e632ee5d216e
 DEPS="libxml2 pkg-config"
 

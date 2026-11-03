@@ -1,7 +1,10 @@
 # https://www.sqlite.org/download.html
 NAME=sqlite3
 VERSION=3540100
-URL=https://www.sqlite.org/2026/sqlite-autoconf-$VERSION.tar.gz
+YEAR=2026
+URL=https://www.sqlite.org/$YEAR/sqlite-autoconf-$VERSION.tar.gz
+# The newest release, for scripts/update-deps.sh: <page> <regex>
+LATEST='https://www.sqlite.org/download.html (?<year>\d{4})/sqlite-autoconf-(?<version>\d{7})\.tar\.gz'
 SHA256=926ef8d3eab93fbf6e06011901273eec076b25594a4e1cdadd50c987f4f6d64e
 DEPS=
 

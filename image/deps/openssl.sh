@@ -2,6 +2,8 @@
 NAME=openssl
 VERSION=3.5.9
 URL=https://github.com/openssl/openssl/releases/download/openssl-$VERSION/openssl-$VERSION.tar.gz
+# The newest release, for scripts/update-deps.sh: <page> <regex>
+LATEST='https://api.github.com/repos/openssl/openssl/releases?per_page=100 "tag_name":\s*"openssl-(?<version>3\.5\.\d+)"'
 SHA256=603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a
 # Built against: zlib
 

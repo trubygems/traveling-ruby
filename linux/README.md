@@ -15,7 +15,7 @@ This will produce a `traveling-ruby-XXXXX.tar.gz` file which contains the Ruby b
 
 ### Build environment (Docker image)
 
-The build system runs inside a Docker container. The Docker images are called [you54f/traveling-ruby-builder-x86_64](https://hub.docker.com/r/you54f/traveling-ruby-builder-x86_64) and [you54f/traveling-ruby-builder-arm64](https://hub.docker.com/r/you54f/traveling-ruby-builder-arm64), and they are built from the sources in `image/`.
+The build system runs inside a Docker container. The Docker images are called [ghcr.io/trubygems/traveling-ruby-builder-x86_64](https://github.com/trubygems/traveling-ruby/pkgs/container/traveling-ruby-builder-x86_64) and [ghcr.io/trubygems/traveling-ruby-builder-arm64](https://github.com/trubygems/traveling-ruby/pkgs/container/traveling-ruby-builder-arm64), and they are built from the sources in `image/`.
 
 The image contains a controlled build environment with a specific compiler toolchain and specific libraries, allowing us to compile binaries that can run on a large number of Linux systems. It's based on [Holy Build Box](http://FooBarWidget.github.io/holy-build-box/).
 

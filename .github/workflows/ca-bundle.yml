@@ -10,6 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
 
@@ -28,9 +29,8 @@ jobs:
             echo EOF
           } >> "$GITHUB_OUTPUT"
 
-      # Pull requests opened with GITHUB_TOKEN do not start other workflows:
-      # close and reopen the pull request to run the builds
       - uses: peter-evans/create-pull-request@v7
+        id: pr
         with:
           branch: update-ca-bundle
           commit-message: Update CA bundle from the Mozilla CA store
@@ -40,3 +40,11 @@ jobs:
 
             Mozilla CA store as of ${{ steps.update.outputs.summary }}
           delete-branch: true
+
+      # Pull requests opened with GITHUB_TOKEN do not start other workflows,
+      # but GITHUB_TOKEN can dispatch them
+      - name: Build
+        if: steps.pr.outputs.pull-request-operation == 'created' || steps.pr.outputs.pull-request-operation == 'updated'
+        run: gh workflow run build.yml --ref update-ca-bundle
+        env:
+          GH_TOKEN: ${{ github.token }}

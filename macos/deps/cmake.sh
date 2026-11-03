@@ -2,6 +2,8 @@
 NAME=cmake
 VERSION=4.4.5
 URL=https://github.com/Kitware/CMake/releases/download/v$VERSION/cmake-$VERSION-macos-universal.tar.gz
+# The newest release, for scripts/update-deps.sh: <page> <regex>
+LATEST='https://api.github.com/repos/Kitware/CMake/releases?per_page=100 "tag_name":\s*"v(?<version>\d+\.\d+\.\d+)"'
 SHA256=679e77a96b9ef9484cc6c1445255fc4f84206b48a65420efbedf16bdab55fbff
 DEPS=
 

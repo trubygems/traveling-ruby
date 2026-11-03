@@ -2,6 +2,8 @@
 NAME=gmp
 VERSION=6.3.0
 URL=https://ftp.gnu.org/gnu/gmp/gmp-$VERSION.tar.bz2
+# The newest release, for scripts/update-deps.sh: <page> <regex>
+LATEST='https://ftp.gnu.org/gnu/gmp/ gmp-(?<version>\d+\.\d+(?:\.\d+)?)\.tar\.bz2'
 SHA256=ac28211a7cfb609bae2e2c8d6058d66c8fe96434f740cf6fe2e47b000d1c20cb
 DEPS=m4
 

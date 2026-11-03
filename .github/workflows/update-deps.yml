@@ -1,0 +1,78 @@
+name: Update dependencies
+
+# Updates the native dependencies (image/deps, macos/deps and image/Dockerfile,
+# see scripts/update-deps.sh) and the gems in shared/gemfiles/default every
+# week, and opens one pull request with the changes. A change in image/ gives
+# the Linux builder images a new tag, so the build rebuilds and tests them.
+#
+# shared/gemfiles/default/Gemfile.lock.win is pinned separately for Windows
+# and is left alone.
+
+on:
+  schedule:
+    - cron: '41 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ruby
+
+      - name: Update dependencies
+        id: deps
+        run: |
+          {
+            echo 'table<<EOF'
+            ./scripts/update-deps.sh
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Update gems
+        id: gems
+        working-directory: shared/gemfiles/default
+        run: |
+          bundle lock --update
+          changes=$(git diff -U0 Gemfile.lock | grep '^[-+]    [a-z]' || true)
+          {
+            echo 'summary<<EOF'
+            if [ -n "$changes" ]; then
+              printf 'Gems:\n\n```diff\n%s\n```\n' "$changes"
+            fi
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+        env:
+          BUNDLE_GEMFILE: Gemfile
+
+      - uses: peter-evans/create-pull-request@v7
+        id: pr
+        with:
+          branch: update-deps
+          commit-message: Update dependencies
+          title: Update dependencies
+          body: |
+            Updates the dependencies to their newest releases.
+
+            ${{ steps.deps.outputs.table || 'No native dependency changes.' }}
+
+            ${{ steps.gems.outputs.summary || 'No gem changes.' }}
+          delete-branch: true
+
+      # Pull requests opened with GITHUB_TOKEN do not start other workflows,
+      # but GITHUB_TOKEN can dispatch them
+      - name: Build
+        if: steps.pr.outputs.pull-request-operation == 'created' || steps.pr.outputs.pull-request-operation == 'updated'
+        run: gh workflow run build.yml --ref update-deps
+        env:
+          GH_TOKEN: ${{ github.token }}

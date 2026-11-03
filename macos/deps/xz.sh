@@ -2,6 +2,8 @@
 NAME=xz
 VERSION=5.8.4
 URL=https://github.com/tukaani-project/xz/releases/download/v$VERSION/xz-$VERSION.tar.gz
+# The newest release, for scripts/update-deps.sh: <page> <regex>
+LATEST='https://api.github.com/repos/tukaani-project/xz/releases?per_page=100 "tag_name":\s*"v(?<version>\d+\.\d+\.\d+)"'
 SHA256=0014c7886930454fe8bd4228665b51af55eeae560ea135c9c4cd33f55b2591d9
 DEPS=
 

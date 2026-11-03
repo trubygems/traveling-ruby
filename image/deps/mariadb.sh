@@ -3,6 +3,8 @@
 NAME=mariadb
 VERSION=3.4.11
 URL=https://archive.mariadb.org/connector-c-$VERSION/mariadb-connector-c-$VERSION-src.tar.gz
+# The newest release, for scripts/update-deps.sh: <page> <regex>
+LATEST='https://archive.mariadb.org/ connector-c-(?<version>3\.4\.\d+)/'
 SHA256=521c0712e9291fa96558df9e2ff431376a3a79329f13751896b694cae12765b4
 # Built against: zlib openssl
 

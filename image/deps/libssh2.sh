@@ -2,6 +2,8 @@
 NAME=libssh2
 VERSION=1.11.1
 URL=https://www.libssh2.org/download/libssh2-$VERSION.tar.gz
+# The newest release, for scripts/update-deps.sh: <page> <regex>
+LATEST='https://libssh2.org/download/ libssh2-(?<version>\d+\.\d+\.\d+)\.tar\.gz'
 SHA256=d9ec76cbe34db98eec3539fe2c899d26b0c837cb3eb466a56b0f109cabf658f7
 # Built against: zlib openssl
 

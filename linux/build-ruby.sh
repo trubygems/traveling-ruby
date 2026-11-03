@@ -27,7 +27,7 @@ function usage()
 	echo "Build Traveling Ruby binaries."
 	echo
 	echo "Options:"
-	echo "  -i IMAGE    Docker image to use (e.g. you54f/traveling-ruby-builder-x86_64:4.0.0)"
+	echo "  -i IMAGE    Docker image to use (e.g. ghcr.io/trubygems/traveling-ruby-builder-x86_64:centos7-<hash>)"
 	echo "  -r VERSION  Ruby version to build. Default: $RUBY_VERSION"
 	echo "  -c DIR      Cache directory to use"
 	echo

@@ -2,6 +2,8 @@
 NAME=libpq
 VERSION=18.6
 URL=https://ftp.postgresql.org/pub/source/v$VERSION/postgresql-$VERSION.tar.bz2
+# The newest release, for scripts/update-deps.sh: <page> <regex>
+LATEST='https://ftp.postgresql.org/pub/source/ href="v(?<version>18\.\d+)/"'
 SHA256=555610c24d53e4316da5b7d3fc25c279d96856d5e0e23ee308c328c5fa881d9f
 
 function build()

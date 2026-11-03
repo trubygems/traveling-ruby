@@ -1,15 +1,19 @@
 # Builds the builder images: docker buildx bake [target...]
 #
 # Targets: linux-x86_64, linux-arm64, linux-musl-x86_64, linux-musl-arm64, or
-# the groups linux and linux-musl. IMAGE_VERSION in linux/Rakefile and
-# linux-musl/Rakefile must match the tags here.
+# the groups linux and linux-musl. scripts/builder-image.sh sets IMAGE_TAG to
+# the hash of this directory, the tag that the Linux builds use.
 #
 # Each dependency is its own stage, so with a layer cache that keeps every stage
 # (CI uses --set '*.cache-to=type=gha,mode=max'), changing one recipe only
 # rebuilds that dependency.
 
-variable "IMAGE_VERSION" {
-  default = "5.0.0"
+variable "IMAGE_REPO" {
+  default = "ghcr.io/trubygems/traveling-ruby-builder"
+}
+
+variable "IMAGE_TAG" {
+  default = "dev"
 }
 
 group "default" {
@@ -28,7 +32,7 @@ target "builder" {
   args = {
     DISTRO = platform == "linux" ? "centos7" : "alpine"
   }
-  tags = ["you54f/traveling-ruby-builder-${arch}:${IMAGE_VERSION}-${platform == "linux" ? "centos7" : "alpine"}"]
+  tags = ["${IMAGE_REPO}-${arch}:${platform == "linux" ? "centos7" : "alpine"}-${IMAGE_TAG}"]
 }
 
 group "linux" {
