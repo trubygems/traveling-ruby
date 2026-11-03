@@ -5,8 +5,8 @@ name: Update dependencies
 # week, and opens one pull request with the changes. A change in image/ gives
 # the Linux builder images a new tag, so the build rebuilds and tests them.
 #
-# shared/gemfiles/default/Gemfile.lock.win is pinned separately for Windows
-# and is left alone.
+# Gemfile.lock.win is derived from the new Gemfile.lock (see
+# scripts/update-gems.sh), so both lockfiles move together.
 
 on:
   schedule:
@@ -41,19 +41,12 @@ jobs:
 
       - name: Update gems
         id: gems
-        working-directory: shared/gemfiles/default
         run: |
-          bundle lock --update
-          changes=$(git diff -U0 Gemfile.lock | grep '^[-+]    [a-z]' || true)
           {
             echo 'summary<<EOF'
-            if [ -n "$changes" ]; then
-              printf 'Gems:\n\n```diff\n%s\n```\n' "$changes"
-            fi
+            ./scripts/update-gems.sh
             echo EOF
           } >> "$GITHUB_OUTPUT"
-        env:
-          BUNDLE_GEMFILE: Gemfile
 
       - uses: peter-evans/create-pull-request@v7
         id: pr
