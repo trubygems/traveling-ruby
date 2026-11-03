@@ -168,17 +168,41 @@ jobs:
           merge-multiple: true
           path: dist
 
+      # One checksums file per platform: an attestation takes at most 1024 subjects
       - name: Write checksums
         working-directory: dist
         run: |
-          sha256sum traveling-ruby*.tar.gz > SHA256SUMS
-          cat SHA256SUMS
+          mkdir ../checksums
+          for platform in linux linux-musl macos windows; do
+            files=$(ls traveling-ruby-*.tar.gz | grep -E -- "-[0-9]+-$platform-(x86_64|arm64)[-.]" || true)
+            [ -z "$files" ] || sha256sum $files > ../checksums/$platform
+          done
+          wc -l ../checksums/*
+          [ "$(cat ../checksums/* | wc -l)" -eq "$(ls traveling-ruby-*.tar.gz | wc -l)" ]
 
-      - name: Attest build provenance
-        if: github.server_url == 'https://github.com'
+      - name: Attest build provenance (linux)
+        if: github.server_url == 'https://github.com' && hashFiles('checksums/linux') != ''
         uses: actions/attest-build-provenance@v3
         with:
-          subject-checksums: dist/SHA256SUMS
+          subject-checksums: checksums/linux
+
+      - name: Attest build provenance (linux-musl)
+        if: github.server_url == 'https://github.com' && hashFiles('checksums/linux-musl') != ''
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-checksums: checksums/linux-musl
+
+      - name: Attest build provenance (macos)
+        if: github.server_url == 'https://github.com' && hashFiles('checksums/macos') != ''
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-checksums: checksums/macos
+
+      - name: Attest build provenance (windows)
+        if: github.server_url == 'https://github.com' && hashFiles('checksums/windows') != ''
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-checksums: checksums/windows
 
       - name: Publish to releases
         run: ./scripts/publish-releases.sh dist
