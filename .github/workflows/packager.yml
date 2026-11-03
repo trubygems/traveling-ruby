@@ -1,0 +1,82 @@
+name: Packager
+
+# Tests the traveling-ruby gem (the truby command) in packager/, and publishes
+# it to rubygems.org when a gem-v<version> tag is pushed.
+#
+# Publishing uses trusted publishing: rubygems.org trusts this workflow's OIDC
+# token in place of an API key, so no secret is stored. The gem's trusted
+# publisher on rubygems.org names this repository, packager.yml and the
+# rubygems environment.
+#
+# The tag gets no GitHub release: cli.sh installs from releases/latest, which
+# must stay a ruby-* release.
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'gem-v*' ]
+    paths:
+      - packager/**
+      - .github/workflows/packager.yml
+  pull_request:
+    paths:
+      - packager/**
+      - .github/workflows/packager.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: packager
+
+jobs:
+  test:
+    name: test (Ruby ${{ matrix.ruby }})
+    strategy:
+      matrix:
+        ruby: [ '3.1', '3.4', '4.0' ]
+      fail-fast: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+          working-directory: packager
+      - run: bundle exec rake test
+      - run: gem build traveling-ruby.gemspec
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/gem-v')
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Add required reviewers to this environment to approve each release
+    environment:
+      name: rubygems
+      url: https://rubygems.org/gems/traveling-ruby
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+      - name: Check the tag matches the gem's version
+        id: version
+        run: |
+          version=$(ruby -r ./lib/traveling_ruby/version -e 'print TravelingRuby::VERSION')
+          if [ "${GITHUB_REF_NAME}" != "gem-v${version}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match the gem's version ${version}; tag gem-v${version}"
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+      - run: gem build traveling-ruby.gemspec
+      # Exchanges the workflow's OIDC token for a short-lived rubygems.org API key
+      - uses: rubygems/configure-rubygems-credentials@v2.1.0
+      - run: gem push "traveling-ruby-${{ steps.version.outputs.version }}.gem"

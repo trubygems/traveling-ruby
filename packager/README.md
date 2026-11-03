@@ -132,3 +132,14 @@ cd packager
 bundle install
 bundle exec rake test
 ```
+
+## Releasing
+
+The gem is published by the [Packager workflow](../.github/workflows/packager.yml) with trusted publishing, so no rubygems.org API key is stored. Bump `TravelingRuby::VERSION`, merge, then tag the merge:
+
+```sh
+git tag gem-v0.1.0
+git push origin gem-v0.1.0
+```
+
+The workflow tests the gem, checks the tag matches its version, and pushes it from the `rubygems` environment.
