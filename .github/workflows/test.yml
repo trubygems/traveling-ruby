@@ -1,13 +1,40 @@
-name: Test you54f/traveling-ruby@main
+name: Test traveling-ruby action
 
-on: 
+on:
   workflow_dispatch:
-  # push:
-  #   branches: [ main ]
-  
+  workflow_run:
+    workflows: [ Build ]
+    types: [ completed ]
+    branches: [ main ]
+  pull_request:
+    paths:
+      - action.yml
+      - cli.sh
+      - .github/workflows/test.yml
+
 jobs:
+  releases:
+    name: check for ruby-* releases
+    runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.check.outputs.published }}
+    steps:
+      - id: check
+        # cli.sh and the action download from ruby-<version>-<revision>-<target>
+        # releases, which only exist once Build has published from main
+        run: |
+          if gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName --jq '.[].tagName' | grep -q '^ruby-'; then
+            echo published=true >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No ruby-* releases published yet; skipping install tests until Build publishes from main"
+            echo published=false >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   linux:
+    needs: releases
+    if: needs.releases.outputs.published == 'true'
     runs-on: ubuntu-latest
     name: test traveling-ruby action on Linux
     steps:
@@ -25,10 +52,15 @@ jobs:
       - uses: actions/checkout@v5
 
       - id: traveling-ruby-action
-        uses: you54f/traveling-ruby@main
+        uses: ./
+        with:
+          gems: rack-3.1.8 rainbow
 
       - name: bash
-        run: ruby --version
+        run: |
+          ruby --version
+          ruby -rrack -e 'abort Rack.release unless Rack.release == "3.1.8"'
+          ruby -rrainbow -e 'puts Rainbow("rainbow loaded").green'
         shell: bash
 
       - name: sh
@@ -36,58 +68,48 @@ jobs:
         shell: sh
 
   macos:
+    needs: releases
+    if: needs.releases.outputs.published == 'true'
     runs-on: macos-latest
     name: test traveling-ruby action on macOS
     steps:
-      - name: remove system install ruby from macos
-        if: runner.os == 'macOS'
-        run: |
-          ruby --version
-          which ruby
-          brew uninstall ruby@3.0
-          
-      - id: traveling-ruby-action
-        uses: you54f/traveling-ruby@main
-
-      - name: bash
-        run: ruby --version
-        shell: bash
-
-      - name: sh
-        run: ruby --version
-        shell: sh     
-
-
-  windows:
-    runs-on: windows-latest
-    name: test traveling-ruby action
-    steps:
       - uses: actions/checkout@v5
+
       - id: traveling-ruby-action
-        uses: you54f/traveling-ruby@main
+        uses: ./
 
       - name: bash
-        run: ruby --version
+        run: |
+          which ruby
+          ruby --version
         shell: bash
-
 
       - name: sh
         run: ruby --version
         shell: sh
 
+  windows:
+    needs: releases
+    if: needs.releases.outputs.published == 'true'
+    runs-on: windows-latest
+    name: test traveling-ruby action on Windows
+    steps:
+      - uses: actions/checkout@v5
+      - id: traveling-ruby-action
+        uses: ./
+
+      - name: bash
+        run: ruby.bat --version
+        shell: bash
 
       - name: cmd
-        run: ruby.exe --version
+        run: ruby --version
         shell: cmd
 
-
       - name: powershell
-        run: ruby.exe --version
-        if: runner.os == 'windows'
+        run: ruby --version
         shell: powershell
 
-
       - name: pwsh
-        run: ruby.exe --version
-        if: runner.os == 'windows'
+        run: ruby --version
         shell: pwsh

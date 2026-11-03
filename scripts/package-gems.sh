@@ -1,12 +1,12 @@
 #!/bin/sh
-
-cd $PLATFORM
-for file in $(find traveling-ruby-gems-* -name '*.gz'); do
-  gem_name=$(echo "${file%-*}" | tr '/' '-')
-  gem_version=$(echo "${file%.tar.gz}" | awk -F- '{print $NF}')
-  pkg_date=$(echo "${file%-*}" | cut -d'-' -f4)
-  ruby_version=$(echo "${file%-*}" | tr '/' '-' | sed -E 's/.*-([0-9]+\.[0-9]+\.[0-9]+(-[a-z0-9]+)?)-([a-z]+)-([a-z0-9_]+)\.tar\.gz/\1/')
-  echo $ruby_version-$gem_version.tar.gz
-  cp "$file" $ruby_version-$gem_version.tar.gz
+# Copies each gem package out of its directory, so it can be published as
+# <gem dir>-<gem>-<version>.tar.gz, e.g.
+# traveling-ruby-gems-3.4.12-0-linux-x86_64/ffi-1.17.2.tar.gz becomes
+# traveling-ruby-gems-3.4.12-0-linux-x86_64-ffi-1.17.2.tar.gz
+set -e
+cd "$PLATFORM"
+for file in traveling-ruby-gems-*/*.tar.gz; do
+  [ -e "$file" ] || continue
+  echo "${file%%/*}-${file#*/}"
+  cp "$file" "${file%%/*}-${file#*/}"
 done
-ls -l

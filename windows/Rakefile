@@ -1,4 +1,5 @@
-VERSION       = File.read("../versions/VERSION.txt").strip
+# Each Ruby version is released as <ruby version>-<revision>; see versions/RUBY_REVISIONS.txt
+REVISIONS     = File.read("../versions/RUBY_REVISIONS.txt").scan(/^(\S+)\s+(\d+)/).to_h
 RUBY_VERSIONS = ENV['RUBY_VERSIONS'] ? [].push(ENV['RUBY_VERSIONS']) : File.read("../versions/RUBY_VERSIONS.txt").strip.split(/\s+/)
 ARCHITECTURES = ENV['ARCHITECTURES'] ? [].push(ENV['ARCHITECTURES']) : ["x86_64","x86"]
 
@@ -19,11 +20,6 @@ task :test do
   # Do nothing
 end
 
-desc "Upload all packages to the server"
-task :upload do
-  # Do nothing
-end
-
 desc "Clean all packages and binaries"
 task :clean do
   sh "rm -rf output"
@@ -36,15 +32,15 @@ ARCHITECTURES.each do |arch|
 
   RUBY_VERSIONS.each do |ruby_version|
     begin
-    package = "traveling-ruby-#{VERSION}-#{ruby_version}-windows-#{arch}.tar.gz"
-    package_full = "traveling-ruby-#{VERSION}-#{ruby_version}-windows-#{arch}-full.tar.gz"
-    gem_dir = "traveling-ruby-gems-#{VERSION}-#{ruby_version}-windows-#{arch}"
+    release = "#{ruby_version}-#{REVISIONS.fetch(ruby_version, "0")}"
+    package = "traveling-ruby-#{release}-windows-#{arch}.tar.gz"
+    package_full = "traveling-ruby-#{release}-windows-#{arch}-full.tar.gz"
+    gem_dir = "traveling-ruby-gems-#{release}-windows-#{arch}"
 
     task :package => "package:#{arch}:#{ruby_version}"
     task :package_full => "package_full:#{ruby_version}:#{arch}"
     task :build   => "build:#{ruby_version}"
     task :test    => "test:#{ruby_version}:#{arch}"
-    task :upload  => "upload:#{ruby_version}"
     task :clean   => "clean:#{ruby_version}"
 
     desc "Create packages for Platform #{arch}"
@@ -81,11 +77,6 @@ ARCHITECTURES.each do |arch|
     desc "Test Ruby #{ruby_version} #{arch}"
     task "test:#{ruby_version}:#{arch}" => "output/#{ruby_version}/#{arch}/bin" do
       sh "../shared/test-gems.sh -p windows -a #{arch} \"output/#{ruby_version}/#{arch}\""
-    end
-
-    desc "Upload Ruby #{ruby_version} packages to the server"
-    task "upload:#{ruby_version}" => [package] do
-      # sh "aws s3 cp #{package} s3://traveling-ruby/releases/ --acl public-read"
     end
     
     desc "Clean Ruby #{ruby_version} packages and binaries and runtime"

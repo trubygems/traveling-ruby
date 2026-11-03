@@ -1,4 +1,5 @@
-VERSION       = File.read("../versions/VERSION.txt").strip
+# Each Ruby version is released as <ruby version>-<revision>; see versions/RUBY_REVISIONS.txt
+REVISIONS     = File.read("../versions/RUBY_REVISIONS.txt").scan(/^(\S+)\s+(\d+)/).to_h
 RUBY_VERSIONS = ENV['RUBY_VERSIONS'] ? [].push(ENV['RUBY_VERSIONS']) : File.read("../versions/RUBY_VERSIONS.txt").strip.split(/\s+/)
 ARCHITECTURES = ENV['ARCHITECTURES'] ? [].push(ENV['ARCHITECTURES']) : ["x86_64","arm64"]
 
@@ -25,11 +26,6 @@ end
 
 desc "Test all Ruby versions (#{RUBY_VERSIONS.join(' ')})"
 task :test do
-  # Do nothing
-end
-
-desc "Upload all packages to the server"
-task :upload do
   # Do nothing
 end
 
@@ -72,15 +68,16 @@ end
 ARCHITECTURES.each do |arch|
   RUBY_VERSIONS.each do |ruby_version|
 
-    package = "traveling-ruby-#{VERSION}-#{ruby_version}-macos-#{arch}.tar.gz"
-    package_full = "traveling-ruby-#{VERSION}-#{ruby_version}-macos-#{arch}-full.tar.gz"
-    gem_dir = "traveling-ruby-gems-#{VERSION}-#{ruby_version}-macos-#{arch}"
+    release = "#{ruby_version}-#{REVISIONS.fetch(ruby_version, "0")}"
+
+    package = "traveling-ruby-#{release}-macos-#{arch}.tar.gz"
+    package_full = "traveling-ruby-#{release}-macos-#{arch}-full.tar.gz"
+    gem_dir = "traveling-ruby-gems-#{release}-macos-#{arch}"
 
     task :package => "package:#{ruby_version}:#{arch}"
     task :package_full => "package_full:#{ruby_version}:#{arch}"
     task :build   => "build:#{ruby_version}:#{arch}"
     task :test    => "test:#{ruby_version}:#{arch}"
-    task :upload  => "upload:#{ruby_version}:#{arch}"
     task :clean   => "clean:#{ruby_version}:#{arch}"
 
     desc "Create packages for Ruby #{ruby_version} #{arch}"
@@ -115,13 +112,6 @@ ARCHITECTURES.each do |arch|
     desc "Test Ruby #{ruby_version} #{arch}"
     task "test:#{ruby_version}:#{arch}" => "output/#{ruby_version}-#{arch}/bin" do
       sh "./test-gems.sh output/#{ruby_version}-#{arch}"
-    end
-
-    desc "Upload Ruby #{ruby_version} packages to the server"
-    task "upload:#{ruby_version}:#{arch}" => [package, "#{gem_dir}/ok"] do
-      sh "s3cmd -P sync --no-preserve #{package} s3://traveling-ruby/releases/"
-      sh "s3cmd -P --delete-removed --no-preserve -r sync #{gem_dir}/ s3://traveling-ruby/releases/#{gem_dir}/"
-      sh "s3cmd del s3://traveling-ruby/releases/#{gem_dir}/ok"
     end
 
     desc "Clean Ruby #{ruby_version} packages, but not the runtime"

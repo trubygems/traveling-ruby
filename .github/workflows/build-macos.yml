@@ -1,0 +1,94 @@
+name: Build macOS
+
+on:
+  workflow_call:
+    inputs:
+      arch:
+        required: true
+        type: string
+      ruby-versions:
+        description: 'JSON array of Ruby versions'
+        required: true
+        type: string
+      rebuild-runtime:
+        description: 'Rebuild the runtime even if the registry has it'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  PLATFORM: macos
+  RUNTIME_REPO: ${{ vars.MACOS_RUNTIME_REPO || format('ghcr.io/{0}-runtime', github.repository) }}
+  ARCHITECTURES: ${{ inputs.arch }}
+
+jobs:
+  runtime:
+    uses: ./.github/workflows/runtime-macos.yml
+    with:
+      arch: ${{ inputs.arch }}
+      rebuild: ${{ inputs.rebuild-runtime }}
+
+  build:
+    name: macos ${{ inputs.arch }} ${{ matrix.ruby-version }}
+    needs: runtime
+    strategy:
+      matrix:
+        ruby-version: ${{ fromJSON(inputs.ruby-versions) }}
+      fail-fast: false
+    runs-on: ${{ inputs.arch == 'arm64' && 'macos-15' || 'macos-15-intel' }}
+    env:
+      RUBY_VERSIONS: ${{ matrix.ruby-version }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oras-project/setup-oras@v1
+        if: needs.runtime.outputs.source == 'registry'
+
+      - name: Pull runtime
+        if: needs.runtime.outputs.source == 'registry'
+        run: |
+          echo "${{ github.token }}" | oras login "${RUNTIME_REPO%%/*}" -u "${{ github.actor }}" --password-stdin
+          ./scripts/macos-runtime.sh pull
+
+      - uses: actions/download-artifact@v5
+        if: needs.runtime.outputs.source == 'artifact'
+        with:
+          name: runtime-macos-${{ inputs.arch }}
+
+      - name: Unpack runtime
+        if: needs.runtime.outputs.source == 'artifact'
+        run: |
+          tar -C macos -xzf runtime.tar.gz && rm runtime.tar.gz
+          touch macos/runtime/ok
+
+      - name: Cache gems
+        uses: actions/cache@v4
+        with:
+          path: macos/runtime/vendor/cache
+          key: macos-${{ inputs.arch }}-gems-${{ hashFiles('shared/gemfiles/*/Gemfile*') }}
+
+      - name: Build
+        working-directory: macos
+        run: |
+          rake stash_conflicting_paths
+          rake --trace
+          rake package_full
+          rake unstash_conflicting_paths
+
+      - name: Package gems
+        run: ./scripts/package-gems.sh
+        env:
+          PLATFORM: macos
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: pkg-macos-${{ inputs.arch }}-${{ matrix.ruby-version }}
+          path: macos/traveling-ruby*.tar.gz
+
+      - name: Test
+        working-directory: macos
+        run: rake test
