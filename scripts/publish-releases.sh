@@ -38,7 +38,7 @@ api() {
   fi
 }
 
-# Every asset of a release as {id, name, browser_download_url}. GitHub pages the
+# Every asset of a release as {id, name, size, browser_download_url}. GitHub pages the
 # list; Gitea returns all of it on every page, so stop once a page adds nothing new.
 list_assets() {
   local release_id=$1 page=1 all='[]' batch before
@@ -49,7 +49,7 @@ list_assets() {
     [ "$(jq length <<< "$batch")" -lt 100 ] || [ "$(jq length <<< "$all")" -eq "$before" ] && break
     page=$((page + 1))
   done
-  jq -c 'map({id, name, browser_download_url})' <<< "$all"
+  jq -c 'map({id, name, size, browser_download_url})' <<< "$all"
 }
 
 delete_asset() {
@@ -61,10 +61,24 @@ delete_asset() {
   fi
 }
 
+# GitHub can store an upload and still answer with a 502. curl's retry then fails
+# with already_exists, so a failed upload counts if the whole file is there.
 upload_asset() {
-  local upload_url=$1 file=$2
-  echo "  + $(basename "$file")"
-  api POST "${upload_url%%\{*}?name=$(basename "$file")" -H 'Content-Type: application/octet-stream' --data-binary "@$file" > /dev/null
+  local upload_url=$1 release_id=$2 file=$3 name size
+  name=$(basename "$file")
+  size=$(wc -c < "$file" | tr -d ' ')
+  echo "  + $name"
+  api POST "${upload_url%%\{*}?name=$name" -H 'Content-Type: application/octet-stream' --data-binary "@$file" > /dev/null && return
+  list_assets "$release_id" | jq -e --arg n "$name" --argjson s "$size" 'any(.name == $n and .size == $s)' > /dev/null
+  echo "    already uploaded, despite the error above"
+}
+
+# Prints a published asset. Gitea builds download URLs from its ROOT_URL, which
+# runners may not reach.
+fetch_asset() {
+  local tag=$1 name=$2 url=$3
+  [ -n "${GITEA_ACTIONS:-}" ] && url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$tag/$name"
+  curl -fsSL --retry 3 -H "Authorization: token $GITHUB_TOKEN" "$url"
 }
 
 # manifest.json from a SHA256SUMS listing the release's assets
@@ -117,11 +131,12 @@ for runtime in traveling-ruby-[0-9]*.tar.gz; do
   for f in "${files[@]}"; do
     jq -e --arg n "$f" 'any(.name == $n)' <<< "$assets" > /dev/null || new+=("$f")
   done
-  if [ ${#new[@]} -eq 0 ]; then
+  metadata=$(jq '[.[] | select(.name == "SHA256SUMS" or .name == "manifest.json")] | length' <<< "$assets")
+  # A run that stopped part way can leave a release with no SHA256SUMS or manifest.json
+  if [ ${#new[@]} -eq 0 ] && [ "$metadata" -eq 2 ]; then
     echo "  up to date"
     continue
   fi
-  metadata=$(jq '[.[] | select(.name == "SHA256SUMS" or .name == "manifest.json")] | length' <<< "$assets")
   total=$(($(jq length <<< "$assets") - metadata + ${#new[@]} + 2))
   if [ "$total" -gt "$MAX_ASSETS" ]; then
     echo "::error::$tag would have $total assets, more than $MAX_ASSETS; bump its revision in versions/RUBY_REVISIONS.txt to start a new release"
@@ -130,7 +145,7 @@ for runtime in traveling-ruby-[0-9]*.tar.gz; do
   fi
 
   if [ -n "${DRY_RUN:-}" ]; then
-    printf '  would add %s\n' "${new[@]}"
+    [ ${#new[@]} -eq 0 ] || printf '  would add %s\n' "${new[@]}"
     continue
   fi
 
@@ -149,27 +164,31 @@ for runtime in traveling-ruby-[0-9]*.tar.gz; do
   fi
   release_id=$(jq -r .id <<< "$release")
   upload_url=$(jq -r .upload_url <<< "$release")
-  # Gitea builds upload and download URLs from its ROOT_URL, which runners may not reach
+  # As with download URLs, Gitea's upload URLs may not be reachable
   [ -n "${GITEA_ACTIONS:-}" ] && upload_url="$API/releases/$release_id/assets"
 
   # Checksums of what the release already has, plus the new files
   : > "$WORK/SHA256SUMS"
   sums=$(jq -r '.[] | select(.name == "SHA256SUMS") | .browser_download_url' <<< "$assets")
-  if [ -n "$sums" ]; then
-    [ -n "${GITEA_ACTIONS:-}" ] && sums="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$tag/SHA256SUMS"
-    curl -fsSL --retry 3 -H "Authorization: token $GITHUB_TOKEN" "$sums" > "$WORK/SHA256SUMS"
-  fi
-  sha256sum "${new[@]}" >> "$WORK/SHA256SUMS"
+  [ -z "$sums" ] || fetch_asset "$tag" SHA256SUMS "$sums" > "$WORK/SHA256SUMS"
+  # Assets from a run that stopped before writing SHA256SUMS. Hash what was
+  # published, as this run's build of the same file can differ.
+  while IFS=$'\t' read -r name url; do
+    awk -v n="$name" '$NF == n { found = 1 } END { exit !found }' "$WORK/SHA256SUMS" && continue
+    sum=$(fetch_asset "$tag" "$name" "$url" | sha256sum)
+    echo "${sum%% *}  $name" >> "$WORK/SHA256SUMS"
+  done < <(jq -r '.[] | select(.name != "SHA256SUMS" and .name != "manifest.json") | [.name, .browser_download_url] | @tsv' <<< "$assets")
+  [ ${#new[@]} -eq 0 ] || sha256sum "${new[@]}" >> "$WORK/SHA256SUMS"
   sort -k2 -u "$WORK/SHA256SUMS" -o "$WORK/SHA256SUMS"
   manifest "$key" "$ruby" "$revision" "$target" < "$WORK/SHA256SUMS" > "$WORK/manifest.json"
 
-  for f in "${new[@]}"; do
-    upload_asset "$upload_url" "$f"
+  for f in ${new[@]+"${new[@]}"}; do
+    upload_asset "$upload_url" "$release_id" "$f"
   done
   for id in $(jq -r '.[] | select(.name == "SHA256SUMS" or .name == "manifest.json") | .id' <<< "$assets"); do
     delete_asset "$release_id" "$id"
   done
-  upload_asset "$upload_url" "$WORK/SHA256SUMS"
-  upload_asset "$upload_url" "$WORK/manifest.json"
+  upload_asset "$upload_url" "$release_id" "$WORK/SHA256SUMS"
+  upload_asset "$upload_url" "$release_id" "$WORK/manifest.json"
 done
 exit $failed
