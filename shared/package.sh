@@ -183,6 +183,7 @@ elif [[ "$RUBY_PACKAGE" != "" ]]; then
 		--exclude "include/*" \
 		--exclude "lib/ruby/gems/$RUBY_COMPAT_VERSION/extensions/*" \
 		--exclude "lib/ruby/gems/$RUBY_COMPAT_VERSION/gems/*" \
+		--exclude "lib/ruby/gems/$RUBY_COMPAT_VERSION/plugins/*" \
 		--exclude "lib/ruby/gems/$RUBY_COMPAT_VERSION/specifications/*" \
 		--exclude "lib/ruby/gems/$RUBY_COMPAT_VERSION/deplibs/*" \
 		.

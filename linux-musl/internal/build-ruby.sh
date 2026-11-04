@@ -125,10 +125,14 @@ if $SETUP_SOURCE; then
 	echo
 
 	header "Configuring"
+	# YJIT's Rust code otherwise links the ruby executable to libgcc_s.so.1,
+	# which Alpine doesn't install by default. XLDFLAGS only applies to the
+	# executable, so native extensions still link as before.
 	run ./configure \
 		--prefix /tmp/ruby \
 		--disable-install-doc \
-		--with-out-ext=tk,sdbm,gdbm,dbm,dl,coverage
+		--with-out-ext=tk,sdbm,gdbm,dbm,dl,coverage \
+		XLDFLAGS=-static-libgcc
 	echo
 else
 	echo "Entering ruby-$RUBY_VERSION"
@@ -379,4 +383,9 @@ if $SANITY_CHECK_OUTPUT; then
 	header "Sanity checking build output"
 	env LIBCHECK_ALLOW='libreadline|libtinfo|libformw|libmenuw|libncursesw|libc.musl-aarch64|libc.musl-x86_64' \
 		libcheck /output/bin.real/ruby $(find /output -name '*.so')
+	# libcheck always allows libgcc_s, but the executable has to start on bare Alpine
+	if readelf -d /output/bin.real/ruby | grep -q 'libgcc_s'; then
+		echo "ERROR: bin.real/ruby links to libgcc_s, which Alpine doesn't install by default"
+		exit 1
+	fi
 fi

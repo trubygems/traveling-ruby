@@ -128,6 +128,20 @@ jobs:
           \`\`\`
           EOF
           fi
-      # Exchanges the workflow's OIDC token for a short-lived rubygems.org API key
-      - uses: rubygems/configure-rubygems-credentials@v2.1.0
+      # Exchanges the workflow's OIDC token for a short-lived rubygems.org API key.
+      # Done by hand because rubygems/configure-rubygems-credentials can't send
+      # `owner`, which rubygems.org requires to create a new gem. 138941 is the
+      # immutable ID of the account that owns the gem.
+      - name: Get a rubygems.org API key
+        run: |
+          jwt=$(curl -fsS -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=rubygems.org" | jq -er .value)
+          echo "::add-mask::${jwt}"
+          key=$(jq -n --arg jwt "$jwt" --arg owner 138941 '{jwt: $jwt, owner: $owner}' \
+            | curl -sS --fail-with-body -X POST --data @- \
+              -H 'content-type: application/json' -H 'accept: application/json' \
+              https://rubygems.org/api/v1/oidc/trusted_publisher/exchange_token \
+            | jq -er .rubygems_api_key)
+          echo "::add-mask::${key}"
+          echo "GEM_HOST_API_KEY=${key}" >> "$GITHUB_ENV"
       - run: gem push "traveling-ruby-${{ steps.version.outputs.version }}.gem"

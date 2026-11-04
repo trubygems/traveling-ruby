@@ -15,6 +15,8 @@ Traveling Ruby builds Ruby 3.3.13, 3.4.12 and 4.0.9. Each Ruby version and targe
 | macOS | `macos` | x86_64, arm64 | macOS 12.2 or later |
 | Windows | `windows` | x86_64, arm64 | Windows 10 or later; arm64 needs Windows 11 and Ruby 3.4 or later |
 
+On Alpine, Ruby itself needs nothing extra, but gems with C++ extensions need `libgcc_s`, which Alpine doesn't install by default. These are `charlock_holmes`, `eventmachine`, `mysql2` and `unf_ext`. Without it they fail to load with `Error loading shared library libgcc_s.so.1`. To use them, run `apk add libgcc`.
+
 Releases are tagged `ruby-<ruby>-<revision>-<platform>-<arch>` and hold `traveling-ruby-<ruby>-<revision>-<platform>-<arch>.tar.gz`. The revision starts at 0 and goes up only when the runtime itself is rebuilt. The `-full` packages also contain the prebuilt native extension gems, which are published one gem per tarball as well. New gem versions are added to the existing release, and older ones are never removed. Every release has a `SHA256SUMS` file, a `manifest.json` listing its runtime and gems, and a build provenance attestation.
 
 ## Quickstart
