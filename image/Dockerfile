@@ -33,7 +33,7 @@ COPY base/alpine.sh /tmp/
 RUN /tmp/alpine.sh && rm /tmp/alpine.sh
 
 FROM base-${DISTRO} AS base
-ARG CCACHE_VERSION=4.14.2
+ARG CCACHE_VERSION=4.14.3
 COPY hbb/activate_func.sh hbb/activate-exec /hbb/
 COPY hbb/hbb-activate /hbb/activate
 COPY hbb/libcheck hbb/hardening-check hbb/setuser /hbb/bin/
@@ -42,8 +42,8 @@ COPY hbb/shlib-activate /hbb_shlib/activate
 COPY build-dep /usr/local/bin/
 RUN set -eux; \
 	case "$(uname -m)" in \
-	x86_64) sha=b20ff6415151226ac5a10dfd6839700c694bd67d1871c8fddb266d366ff25bfb ;; \
-	aarch64) sha=b1b583cd76980b291c4a25b95d8cb2cf1637b4a58083b9c53014780c7548f8d0 ;; \
+	x86_64) sha=d553fac006ed93a37342cee9228cf4e13dd66690fa1a8075c54c7bace9b72ae6 ;; \
+	aarch64) sha=f13e56bdb02f62b6f08f54ac527a0a7674dff22ea607167f33621fe2f2ded37b ;; \
 	esac; \
 	file=ccache-$CCACHE_VERSION-linux-$(uname -m)-musl-static.tar.xz; \
 	curl -fsSL -o /tmp/$file https://github.com/ccache/ccache/releases/download/v$CCACHE_VERSION/$file; \
@@ -103,16 +103,16 @@ RUN build-dep libssh2
 
 # Rust, for YJIT
 FROM base AS rust
-ARG RUST_VERSION=1.99.1 RUSTUP_VERSION=1.28.2
+ARG RUST_VERSION=1.99.1 RUSTUP_VERSION=1.29.3
 ENV RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo
 RUN set -eux; \
 	libc=gnu; [ -f /etc/alpine-release ] && libc=musl; \
 	target=$(uname -m)-unknown-linux-$libc; \
 	case "$target" in \
-	x86_64-unknown-linux-gnu) sha=20a06e644b0d9bd2fbdbfd52d42540bdde820ea7df86e92e533c073da0cdd43c ;; \
-	aarch64-unknown-linux-gnu) sha=e3853c5a252fca15252d07cb23a1bdd9377a8c6f3efa01531109281ae47f841c ;; \
-	x86_64-unknown-linux-musl) sha=e6599a1c7be58a2d8eaca66a80e0dc006d87bbcf780a58b7343d6e14c1605cb2 ;; \
-	aarch64-unknown-linux-musl) sha=a97c8f56d7462908695348dd8c71ea6740c138ce303715793a690503a94fc9a9 ;; \
+	x86_64-unknown-linux-gnu) sha=b1c8cb14e30889e7e2999e6b69e62d9e9b9ffc0f4df8180564d306d9680e6c55 ;; \
+	aarch64-unknown-linux-gnu) sha=9f608c142e0e38a78957d0661ba1dfaf0b6fb37184cfaa4b9a0aa57af6184282 ;; \
+	x86_64-unknown-linux-musl) sha=1552169aba2836777136ccff7a381e95c17233b5d8250cd5e10ae3cb971bfcfc ;; \
+	aarch64-unknown-linux-musl) sha=956deacdc27ab82ae7ac821d5d3e9e95e4795d476d17efe99743bb8531ca1031 ;; \
 	esac; \
 	curl -fsSL -o /tmp/rustup-init https://static.rust-lang.org/rustup/archive/$RUSTUP_VERSION/$target/rustup-init; \
 	echo "$sha  /tmp/rustup-init" | sha256sum -c -; \

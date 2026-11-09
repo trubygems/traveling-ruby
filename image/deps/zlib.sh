@@ -1,10 +1,10 @@
 # https://zlib.net/
 NAME=zlib
-VERSION=1.3.2
+VERSION=1.4
 URL=https://zlib.net/fossils/zlib-$VERSION.tar.gz
 # The newest release, for scripts/update-deps.sh: <page> <regex>
 LATEST='https://zlib.net/fossils/ zlib-(?<version>\d+\.\d+(?:\.\d+)*)\.tar\.gz'
-SHA256=bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16
+SHA256=02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584
 
 function build()
 {

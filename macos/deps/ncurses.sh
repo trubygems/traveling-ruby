@@ -1,10 +1,10 @@
 # https://ftp.gnu.org/gnu/ncurses/
 NAME=ncurses
-VERSION=6.5
+VERSION=6.6
 URL=https://ftp.gnu.org/gnu/ncurses/ncurses-$VERSION.tar.gz
 # The newest release, for scripts/update-deps.sh: <page> <regex>
 LATEST='https://ftp.gnu.org/gnu/ncurses/ ncurses-(?<version>\d+\.\d+)\.tar\.gz'
-SHA256=136d91bc269a9a5785e5f9e980bc76ab57428f604ce3e5a5a90cebc767971cc6
+SHA256=355b4cbbed880b0381a04c46617b7656e362585d52e9cf84a67e2009b749ff11
 DEPS=pkg-config
 
 function build()
